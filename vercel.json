@@ -1,12 +1,15 @@
 {
+  "version": 2,
   "builds": [
     {
-      "src": "web/**",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "build/web" }
+      "src": "build/web/**",
+      "use": "@vercel/static"
     }
   ],
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
   ]
 }
