@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:universal_html/html.dart' as html;
 import '../../navigasi/navigasi_sidebar.dart';
 import 'dart:io';
 // import 'dart:html' as html;
@@ -57,9 +58,47 @@ class _IklanContentState extends State<IklanContent> {
   final TextEditingController _judulController = TextEditingController();
   final TextEditingController _isiController = TextEditingController();
 
+  Future<void> _sendNotification() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
+
+      try {
+        await ApiService.sendNotificationToAllUsers(
+          title: _judulController.text,
+          body: _isiController.text,
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Notifikasi berhasil dikirim!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        _judulController.clear();
+        _isiController.clear();
+
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal kirim notifikasi: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } finally {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+
     _loadBanners();
   }
 
@@ -88,43 +127,43 @@ class _IklanContentState extends State<IklanContent> {
   }
 
   Future<void> _pickImageFromGallery(int boxIndex) async {
-    // if (kIsWeb) {
-    //   // Handle untuk web
-    //   final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
-    //   uploadInput.accept = 'image/*';
-    //   uploadInput.click();
-    //
-    //   uploadInput.onChange.listen((e) async {
-    //     final files = uploadInput.files;
-    //     if (files != null && files.isNotEmpty) {
-    //       final file = files[0];
-    //       final reader = html.FileReader();
-    //
-    //       reader.readAsArrayBuffer(file);
-    //       reader.onLoadEnd.listen((event) async {
-    //         if (reader.result != null) {
-    //           final bytes = reader.result as Uint8List;
-    //           setState(() {
-    //             _selectedImagesBytes[boxIndex] = bytes;
-    //             _selectedImageFileNames[boxIndex] = file.name;
-    //           });
-    //         }
-    //       });
-    //     }
-    //   });
-    // } else {
-    //   // Handle untuk mobile
-    //   final XFile? image = await _picker.pickImage(
-    //     source: ImageSource.gallery,
-    //     imageQuality: 85,
-    //   );
-    //
-    //   if (image != null) {
-    //     setState(() {
-    //       _selectedImages[boxIndex] = File(image.path);
-    //     });
-    //   }
-    // }
+    if (kIsWeb) {
+      // Handle untuk web
+      final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
+      uploadInput.accept = 'image/*';
+      uploadInput.click();
+
+      uploadInput.onChange.listen((e) async {
+        final files = uploadInput.files;
+        if (files != null && files.isNotEmpty) {
+          final file = files[0];
+          final reader = html.FileReader();
+
+          reader.readAsArrayBuffer(file);
+          reader.onLoadEnd.listen((event) async {
+            if (reader.result != null) {
+              final bytes = reader.result as Uint8List;
+              setState(() {
+                _selectedImagesBytes[boxIndex] = bytes;
+                _selectedImageFileNames[boxIndex] = file.name;
+              });
+            }
+          });
+        }
+      });
+    } else {
+      // Handle untuk mobile
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        setState(() {
+          _selectedImages[boxIndex] = File(image.path);
+        });
+      }
+    }
   }
 
   Future<void> _uploadBanners() async {
@@ -257,60 +296,6 @@ class _IklanContentState extends State<IklanContent> {
       },
     );
   }
-
-  // void _submitNotifikasi() {
-  //   if (_formKey.currentState!.validate()) {
-  //     final judul = _judulController.text;
-  //     final isi = _isiController.text;
-  //
-  //     // Kirim notifikasi ke semua user
-  //     ApiService.sendNotificationToUsers(
-  //       title: judul,
-  //       body: isi,
-  //       type: 'advertisement',
-  //     ).then((_) {
-  //       // Tampilkan dialog konfirmasi
-  //       showDialog(
-  //         context: context,
-  //         builder: (BuildContext context) {
-  //           return AlertDialog(
-  //             title: Text('Notifikasi Berhasil Dibuat'),
-  //             content: Column(
-  //               mainAxisSize: MainAxisSize.min,
-  //               crossAxisAlignment: CrossAxisAlignment.start,
-  //               children: [
-  //                 Text('Judul: $judul'),
-  //                 SizedBox(height: 8),
-  //                 Text('Isi: $isi'),
-  //                 SizedBox(height: 8),
-  //                 Text('Notifikasi telah dikirim ke semua user'),
-  //               ],
-  //             ),
-  //             actions: [
-  //               TextButton(
-  //                 onPressed: () {
-  //                   Navigator.of(context).pop();
-  //                 },
-  //                 child: Text('OK'),
-  //               ),
-  //             ],
-  //           );
-  //         },
-  //       );
-  //
-  //       // Reset form
-  //       _judulController.clear();
-  //       _isiController.clear();
-  //     }).catchError((error) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(
-  //           content: Text('Gagal mengirim notifikasi: $error'),
-  //           backgroundColor: Colors.red,
-  //         ),
-  //       );
-  //     });
-  //   }
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -509,7 +494,7 @@ class _IklanContentState extends State<IklanContent> {
             'Klik pada kotak kosong untuk menambahkan banner',
             style: TextStyle(
               color: Colors.grey[600],
-              fontSize: 14,
+              fontSize: 16,
               fontFamily: 'Afacad'
             ),
           ),
@@ -657,7 +642,7 @@ class _IklanContentState extends State<IklanContent> {
         children: [
           Container(
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey[300]!),
+              border: Border.all(color: Colors.grey.shade500!),
               borderRadius: BorderRadius.circular(8),
             ),
             child: ClipRRect(
@@ -729,7 +714,7 @@ class _IklanContentState extends State<IklanContent> {
       onTap: () => _pickImageFromGallery(index),
       child: Container(
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[300]!),
+          border: Border.all(color: Colors.grey.shade500!),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
@@ -856,28 +841,28 @@ class _IklanContentState extends State<IklanContent> {
               },
             ),
             SizedBox(height: 20),
-            // SizedBox(
-            //   width: double.infinity,
-            //   child: ElevatedButton(
-            //     onPressed: /* _submitNotifikasi,*/
-            //     style: ElevatedButton.styleFrom(
-            //       backgroundColor: Color(0xFF109E88),
-            //       padding: EdgeInsets.symmetric(vertical: 16),
-            //       shape: RoundedRectangleBorder(
-            //         borderRadius: BorderRadius.circular(8),
-            //       ),
-            //     ),
-            //     child: Text(
-            //       'KIRIM NOTIFIKASI',
-            //       style: TextStyle(
-            //         color: Colors.white,
-            //         fontFamily: 'Afacad',
-            //         fontWeight: FontWeight.bold,
-            //         fontSize: 16,
-            //       ),
-            //     ),
-            //   ),
-            // ),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _sendNotification,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFF109E88),
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text(
+                  'KIRIM NOTIFIKASI',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontFamily: 'Afacad',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),

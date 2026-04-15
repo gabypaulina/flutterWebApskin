@@ -276,8 +276,8 @@ class DashboardContent extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
           side: BorderSide(
-            color: Colors.grey.withOpacity(0.25),
-            width: 1,
+            color: Colors.grey.shade600.withOpacity(0.5),
+            width: 2,
           ),
         ),
         color: Colors.white,
@@ -336,10 +336,11 @@ class DashboardContent extends StatelessWidget {
 
     return Card(
       elevation: 0,
+      clipBehavior: Clip.antiAlias, // 👈 INI PENTING
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         side: BorderSide(
-          color: Colors.grey.withOpacity(0.25),
+          color: Colors.black,
           width: 1,
         ),
       ),
@@ -358,24 +359,25 @@ class DashboardContent extends StatelessWidget {
                   dataRowHeight: 75,
                   dividerThickness: 1,
                   border: TableBorder(
+                    borderRadius: BorderRadius.circular(10),
                     horizontalInside: BorderSide(
-                      color: Colors.grey.withOpacity(0.25),
+                      color: Colors.black,
                       width: 1,
                     ),
                     verticalInside: BorderSide(
-                      color: Colors.grey.withOpacity(0.25),
+                      color: Colors.black,
                       width: 1,
                     ),
                   ),
                   columns: [
-                    _buildDataColumn('ID'),
-                    _buildDataColumn('Nama Pasien'),
-                    _buildDataColumn('Tipe'),
+                    _buildDataColumn('NAMA PASIEN'),
+                    _buildDataColumn('NO. HANDPHONE'),
+                    _buildDataColumn('TIPE'),
                     _buildDataColumn('PIC'),
-                    _buildDataColumn('Waktu'),
-                    _buildDataColumn('Status'),
-                    _buildDataColumn('Payment'),
-                    _buildDataColumn('No. HP'),
+                    _buildDataColumn('WAKTU'),
+                    _buildDataColumn('STATUS'),
+                    _buildDataColumn('PEMBAYARAN'),
+
                   ],
                   rows: todayAppointments.map((appointment) {
                     return _buildDataRowFromAppointment(appointment);
@@ -406,13 +408,13 @@ class DashboardContent extends StatelessWidget {
 
     return DataRow(
       cells: [
-        _buildDataCell(id),
         _buildDataCell(namaPasien),
+        _buildDataCell(noHandphone),
         DataCell(
           Center(
             child: Container(
               width: 120,
-              height: 40,
+              height: 30,
               decoration: BoxDecoration(
                 color: _getTypeColor(tipe),
                 borderRadius: BorderRadius.circular(8),
@@ -422,7 +424,7 @@ class DashboardContent extends StatelessWidget {
                   tipe,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 14,
+                    fontSize: 16,
                     fontFamily: 'Afacad',
                     fontWeight: FontWeight.bold,
                   ),
@@ -437,7 +439,7 @@ class DashboardContent extends StatelessWidget {
           Center(
             child: Container(
               width: 120,
-              height: 40,
+              height: 30,
               decoration: BoxDecoration(
                 color: _getStatusColor(status),
                 borderRadius: BorderRadius.circular(8),
@@ -447,7 +449,7 @@ class DashboardContent extends StatelessWidget {
                   status.toString().toUpperCase(),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 14,
+                    fontSize: 16,
                     fontFamily: 'Afacad',
                     fontWeight: FontWeight.bold,
                   ),
@@ -460,7 +462,7 @@ class DashboardContent extends StatelessWidget {
           Center(
             child: Container(
               width: 100,
-              height: 35,
+              height: 30,
               decoration: BoxDecoration(
                 color: _getPaymentColor(paymentStatus),
                 borderRadius: BorderRadius.circular(6),
@@ -470,7 +472,7 @@ class DashboardContent extends StatelessWidget {
                   paymentStatus.toUpperCase(),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 12,
+                    fontSize: 16,
                     fontFamily: 'Afacad',
                     fontWeight: FontWeight.bold,
                   ),
@@ -479,7 +481,7 @@ class DashboardContent extends StatelessWidget {
             ),
           ),
         ),
-        _buildDataCell(noHandphone),
+
       ],
     );
   }
@@ -488,6 +490,7 @@ class DashboardContent extends StatelessWidget {
     return DataColumn(
       label: Expanded(
         child: Container(
+          color: Color(0xFF109E88),
           padding: EdgeInsets.symmetric(vertical: 8),
           alignment: Alignment.center,
           child: Text(
@@ -495,8 +498,8 @@ class DashboardContent extends StatelessWidget {
             style: TextStyle(
               fontFamily: 'Afacad',
               fontWeight: FontWeight.bold,
-              fontSize: 20,
-              color: const Color(0xFF109E88),
+              fontSize: 18,
+              color: Colors.white,
             ),
           ),
         ),

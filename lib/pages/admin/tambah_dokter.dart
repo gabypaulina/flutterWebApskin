@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show Uint8List, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:universal_html/html.dart' as html;
 import '../../navigasi/navigasi_sidebar.dart';
 import '../../services/api_service.dart';
 
@@ -95,60 +96,60 @@ class _TambahDokterState extends State<TambahDokter> {
   }
 
   Future<void> _pickImage() async {
-    // if (kIsWeb) {
-    //   final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
-    //   uploadInput.accept = 'image/*';
-    //   uploadInput.click();
-    //
-    //   uploadInput.onChange.listen((e) async {
-    //     final files = uploadInput.files;
-    //     if (files != null && files.isNotEmpty) {
-    //       final file = files[0];
-    //
-    //       if (!file.type.startsWith('image/')) {
-    //         ScaffoldMessenger.of(context).showSnackBar(
-    //           const SnackBar(
-    //             content: Text('Hanya file gambar yang diperbolehkan'),
-    //             backgroundColor: Colors.red,
-    //           ),
-    //         );
-    //         return;
-    //       }
-    //
-    //       final reader = html.FileReader();
-    //       reader.readAsArrayBuffer(file);
-    //       await reader.onLoad.first;
-    //
-    //       final arrayBuffer = reader.result;
-    //       final bytes = Uint8List.fromList(arrayBuffer as List<int>);
-    //
-    //       setState(() {
-    //         _selectedImage = {
-    //           'bytes': bytes,
-    //           'filename': file.name,
-    //           'type': file.type,
-    //           'size': file.size
-    //         };
-    //       });
-    //
-    //       print('File selected: ${file.name}, type: ${file.type}, size: ${file.size} bytes');
-    //     }
-    //   });
-    // } else {
-    //   final pickedFile = await ImagePicker().pickImage(
-    //     source: ImageSource.gallery,
-    //     maxWidth: 800,
-    //     maxHeight: 600,
-    //     imageQuality: 85,
-    //   );
-    //
-    //   if (pickedFile != null) {
-    //     setState(() {
-    //       _selectedImage = File(pickedFile.path);
-    //     });
-    //     print('File selected: ${pickedFile.path}');
-    //   }
-    // }
+    if (kIsWeb) {
+      final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
+      uploadInput.accept = 'image/*';
+      uploadInput.click();
+
+      uploadInput.onChange.listen((e) async {
+        final files = uploadInput.files;
+        if (files != null && files.isNotEmpty) {
+          final file = files[0];
+
+          if (!file.type.startsWith('image/')) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Hanya file gambar yang diperbolehkan'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            return;
+          }
+
+          final reader = html.FileReader();
+          reader.readAsArrayBuffer(file);
+          await reader.onLoad.first;
+
+          final arrayBuffer = reader.result;
+          final bytes = Uint8List.fromList(arrayBuffer as List<int>);
+
+          setState(() {
+            _selectedImage = {
+              'bytes': bytes,
+              'filename': file.name,
+              'type': file.type,
+              'size': file.size
+            };
+          });
+
+          print('File selected: ${file.name}, type: ${file.type}, size: ${file.size} bytes');
+        }
+      });
+    } else {
+      final pickedFile = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 600,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+        });
+        print('File selected: ${pickedFile.path}');
+      }
+    }
   }
 
   Future<void> _simpanDokter() async {

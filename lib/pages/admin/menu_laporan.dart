@@ -64,93 +64,12 @@ class _LaporanContentState extends State<LaporanContent> {
   bool _isFilterActive = false;
   List<String> _allDoctorsFromDatabase = [];
   bool _isLoading = false;
+  bool _isLoadingReservasi = false;
+  bool _isLoadingPending = false;
 
-  // Data contoh
-  final List<Map<String, String>> _appointmentData = [
-    {
-      'id': 'CT100401',
-      'nama': 'Michael David',
-      'tipe': 'OFFLINE',
-      'pic': 'dr. Intan',
-      'status': 'SELESAI',
-      'tanggal': '10/04/2025'
-    },
-    {
-      'id': 'CT100402',
-      'nama': 'Ronald Vaness',
-      'tipe': 'ONLINE',
-      'pic': 'dr. Intan',
-      'status': 'SELESAI',
-      'tanggal': '15/04/2025'
-    },
-    {
-      'id': 'CT100403',
-      'nama': 'Ardianus Sebastian',
-      'tipe': 'ONLINE',
-      'pic': 'dr. Cindy',
-      'status': 'SELESAI',
-      'tanggal': '20/04/2025'
-    },
-    {
-      'id': 'CT100404',
-      'nama': 'Michael Susanto',
-      'tipe': 'NON-MEDIS',
-      'pic': 'Terapis',
-      'status': 'SELESAI',
-      'tanggal': '25/04/2025'
-    },
-    {
-      'id': 'CT100405',
-      'nama': 'Susan',
-      'tipe': 'OFFLINE',
-      'pic': 'dr. Cindy',
-      'status': 'SELESAI',
-      'tanggal': '30/04/2025'
-    },
-    {
-      'id': 'CT100406',
-      'nama': 'John Doe',
-      'tipe': 'OFFLINE',
-      'pic': 'dr. Intan',
-      'status': 'SELESAI',
-      'tanggal': '05/05/2025'
-    },
-    {
-      'id': 'CT100407',
-      'nama': 'Jane Smith',
-      'tipe': 'ONLINE',
-      'pic': 'dr. Intan',
-      'status': 'SELESAI',
-      'tanggal': '10/05/2025'
-    },
-  ];
 
-  final List<Map<String, String>> _transaksiData = [
-    {
-      'id': 'CT100401',
-      'tanggal': '10/04/2025',
-      'nama': 'Michael David',
-      'tipe': 'OFFLINE',
-      'pic': 'dr. Intan',
-      'total': '345.000',
-    },
-    {
-      'id': 'CT100402',
-      'tanggal': '15/04/2025',
-      'nama': 'Ronald Vaness',
-      'tipe': 'ONLINE',
-      'pic': 'dr. Intan',
-      'total': '540.000',
-    },
-    {
-      'id': 'CT100403',
-      'tanggal': '20/04/2025',
-      'nama': 'Ardianus Sebastian',
-      'tipe': 'ONLINE',
-      'pic': 'dr. Cindy',
-      'total': '420.000',
-    },
-  ];
+  List<Map<String, String>> _appointmentData = [];
+  List<Map<String, String>> _transaksiData = [];
 
   // Warna untuk chart dokter
   final List<Color> _doctorColors = [
@@ -170,6 +89,129 @@ class _LaporanContentState extends State<LaporanContent> {
   void initState() {
     super.initState();
     _loadAllDoctors();
+    _fetchReservasiLaporan();
+    _fetchTransaksiPending();
+  }
+
+  String _shortDoctorName(String fullName) {
+    if (fullName.contains(',')) {
+      return fullName.split(',')[0].trim();
+    }
+    return fullName;
+  }
+
+  Future<void> _fetchReservasiLaporan() async {
+    setState(() {
+      _isLoadingReservasi = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      final response = await http.get(
+        Uri.parse('${ApiService.basedUrl}/laporan/reservasi'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        final List data = body['data'];
+
+        setState(() {
+          _appointmentData = data.map<Map<String, String>>((item) {
+            return {
+              'id': item['id'] ?? '-',
+              'nama': item['nama'] ?? '-',
+              'pic': item['pic'] ?? '-',
+              'tanggal': item['tanggal'] ?? '-',
+              'status': item['status'] ?? '-',
+              'jamReservasi': item['jamReservasi'] ?? '-',
+              'tipe':item['tipe'],
+              'amount' : item['amount'].toString() ?? '-',
+              'paidAt' : item['paidAt'] ?? '-',
+              'paymentStatus' : item['paymentStatus'] ?? '-'
+            };
+          }).toList();
+
+          for (var e in _appointmentData) {
+            print("STATUS: ${e['status']} | PAYMENT: ${e['paymentStatus']}");
+          }
+
+          _isLoadingReservasi = false;
+
+          print('STATUS CODE: ${response.statusCode}');
+          print('BODY: ${response.body}');
+        });
+      }else {
+        print('ERROR STATUS: ${response.statusCode}');
+        setState(() {
+          _isLoadingReservasi = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetch reservasi: $e');
+      setState(() {
+        _isLoadingReservasi = false;
+      });
+    }
+  }
+
+  Future<void> _fetchTransaksiPending() async {
+    setState(() {
+      _isLoadingPending = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      final response = await http.get(
+        Uri.parse('${ApiService.basedUrl}/laporan/reservasi/pending'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        final List data = body['data'];
+
+        setState(() {
+          _transaksiData = data.map<Map<String, String>>((item) {
+            return {
+              'id': item['id'] ?? '-',
+              'nama': item['nama'] ?? '-',
+              'pic': item['pic'] ?? '-',
+              'tanggal': item['tanggal'] ?? '-',
+              'status': item['status'] ?? '-',
+              'jamReservasi': item['jamReservasi'] ?? '-',
+              'tipe':item['tipe'],
+              'amount' : item['amount'].toString() ?? '-',
+              'paidAt' : item['paidAt'] ?? '-',
+              'paymentStatus' : item['paymentStatus'] ?? '-'
+            };
+          }).toList();
+
+          _isLoadingPending = false;
+
+          print('STATUS CODE: ${response.statusCode}');
+          print('BODY: ${response.body}');
+        });
+      }else {
+        print('ERROR STATUS: ${response.statusCode}');
+        setState(() {
+          _isLoadingPending = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetch transaksi pending: $e');
+      setState(() {
+        _isLoadingPending = false;
+      });
+    }
   }
 
   // Method untuk mengambil semua dokter dari database
@@ -195,7 +237,7 @@ class _LaporanContentState extends State<LaporanContent> {
 
         // Ekstrak nama dokter dari data
         final List<String> doctorNames = doctorsData.map<String>((doctor) {
-          return doctor['nama']?.toString() ?? '';
+          return _shortDoctorName(doctor['nama']?.toString() ?? '');
         }).where((name) => name.isNotEmpty).toList();
 
         // Tambahkan 'Terapis' jika belum ada
@@ -247,7 +289,17 @@ class _LaporanContentState extends State<LaporanContent> {
 
   Future<void> _exportLaporan() async {
     try {
-      final filteredData = _getFilteredAppointmentData();
+      final filteredData = _getFilteredAppointmentData()
+        ..sort((a, b) {
+          final dateA = _parseDate(a['tanggal'] ?? '');
+          final dateB = _parseDate(b['tanggal'] ?? '');
+          return dateA.compareTo(dateB); // ASC (lama → baru)
+        });
+
+      print('FILTERED DATA LENGTH: ${filteredData.length}');
+      for (var item in filteredData) {
+        print('TANGGAL: ${item['tanggal']}');
+      }
 
       if (filteredData.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -261,17 +313,22 @@ class _LaporanContentState extends State<LaporanContent> {
       final logoImage = await imageFromAssetBundle('assets/images/logo.png');
 
       // GRUP BERDASARKAN TANGGAL RESERVASI
-      final Map<String, List<Map<String, String>>> groupedData = {};
-      for(var item in filteredData) {
-        final tanggal = item['tanggal'] ?? 'Unknown';
-        if (!groupedData.containsKey(tanggal)) {
-          groupedData[tanggal] = [];
+      final Map<DateTime, List<Map<String, String>>> groupedData = {};
+
+      for (var item in filteredData) {
+        final rawTanggal = item['tanggal'] ?? '';
+        final parsedDate = _parseDate(rawTanggal);
+
+        final key = DateTime(parsedDate.year, parsedDate.month, parsedDate.day);
+
+        if (!groupedData.containsKey(key)) {
+          groupedData[key] = [];
         }
-        groupedData[tanggal]!.add(item);
+        groupedData[key]!.add(item);
       }
 
       final sortedDates = groupedData.keys.toList()
-        ..sort((a, b) => _parseDate(a).compareTo(_parseDate(b)));
+        ..sort((a, b) => a.compareTo(b));
 
       // Tentukan periode
       String periode;
@@ -283,110 +340,142 @@ class _LaporanContentState extends State<LaporanContent> {
             '${_getMonthName(now.month)} ${now.year}';
       }
 
-      // Buat halaman per tanggal
-      for (var i = 0; i < sortedDates.length; i++) {
-        final tanggal = sortedDates[i];
-        final dataPerTanggal = groupedData[tanggal]!;
+      final totalReservasi = filteredData.length;
 
-        pdf.addPage(
-          pw.MultiPage(
-            pageFormat: PdfPageFormat.a4,
-            build: (context) {
-              return [
-                // Header dengan logo dan judul
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Image(logoImage, width: 80, height: 80),
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.end,
-                      children: [
-                        pw.Text(
-                          'LAPORAN RESERVASI',
-                          style: pw.TextStyle(
-                            fontSize: 18,
-                            fontWeight: pw.FontWeight.bold,
-                            color: PdfColor.fromInt(0xFF109E88),
-                          ),
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+
+          build: (context) {
+            final List<pw.Widget> widgets = [];
+
+            // HEADER
+            widgets.add(
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Image(logoImage, width: 80, height: 80),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text(
+                        'LAPORAN RESERVASI',
+                        style: pw.TextStyle(
+                          fontSize: 18,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColor.fromInt(0xFF109E88),
                         ),
-                        pw.Text(
-                          'Periode: $periode',
-                          style: const pw.TextStyle(fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      pw.Text('Periode: $periode'),
+                    ],
+                  ),
+                ],
+              ),
+            );
+
+            widgets.add(pw.SizedBox(height: 16));
+
+            // 🔥 INI YANG BENAR: cukup 1 loop saja
+            for (var entry in groupedData.entries) {
+              final tanggal = _formatDate(entry.key);
+              final data = entry.value;
+
+              widgets.add(pw.Text(
+                'Tanggal: $tanggal',
+                style: pw.TextStyle(
+                  fontSize: 14,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColor.fromInt(0xFF109E88),
                 ),
-                pw.SizedBox(height: 16),
+              ));
 
-                // Tanggal tindakan
-                pw.Text(
-                  'Tanggal: $tanggal',
+              widgets.add(
+                  pw.Table(
+                    border: pw.TableBorder.all(color: PdfColors.black),
+
+                    columnWidths: {
+                      0: const pw.FlexColumnWidth(2.0), // ID
+                      1: const pw.FlexColumnWidth(2.4), // Nama
+                      2: const pw.FlexColumnWidth(2.5), // PIC (dibuat stabil & lebih lebar)
+                      3: const pw.FlexColumnWidth(1.8), // Tanggal
+                      4: const pw.FlexColumnWidth(2.0), // Jam
+                    },
+
+                    children: [
+                      // HEADER
+                      pw.TableRow(
+                        decoration: pw.BoxDecoration(
+                          color: PdfColor.fromInt(0xFF109E88),
+                        ),
+                        children: [
+                          _pdfHeaderCell('ID'),
+                          _pdfHeaderCell('Nama'),
+                          _pdfHeaderCell('PIC'),
+                          _pdfHeaderCell('Tanggal'),
+                          _pdfHeaderCell('Jam'),
+                        ],
+                      ),
+
+                      // DATA
+                      ...data.map((e) => pw.TableRow(
+                        children: [
+                          _pdfCell(e['id']),
+                          _pdfCell(e['nama']),
+
+                          // 🔥 INI KUNCI UTAMA: PIC tidak akan mengubah ukuran kolom lagi
+                          _pdfCell(e['pic']),
+
+                          _pdfCell(e['tanggal']),
+                          _pdfCell(e['jamReservasi']),
+                        ],
+                      )),
+                    ],
+                  )
+              );
+
+              widgets.add(pw.SizedBox(height: 10));
+
+              // widgets.add(
+              //   pw.Align(
+              //     alignment: pw.Alignment.centerRight,
+              //     child: pw.Text(
+              //       'Total Reservasi: ${data.length}',
+              //       style: pw.TextStyle(
+              //         fontWeight: pw.FontWeight.bold,
+              //         color: PdfColor.fromInt(0xFF109E88),
+              //       ),
+              //     ),
+              //   ),
+              // );
+            }
+            widgets.add(pw.SizedBox(height: 20));
+
+            widgets.add(
+              pw.Divider(color: PdfColors.grey),
+            );
+
+            widgets.add(pw.SizedBox(height: 8));
+
+            widgets.add(
+              pw.Align(
+                alignment: pw.Alignment.centerRight,
+                child: pw.Text(
+                  'TOTAL RESERVASI: $totalReservasi',
                   style: pw.TextStyle(
                     fontSize: 14,
                     fontWeight: pw.FontWeight.bold,
                     color: PdfColor.fromInt(0xFF109E88),
                   ),
                 ),
-                pw.SizedBox(height: 8),
+              ),
+            );
 
-                // Tabel data
-                pw.Table.fromTextArray(
-                  headers: ['ID Customer', 'Nama Customer', 'PIC', 'Tanggal Tindakan', 'Jam Reservasi'],
-                  data: dataPerTanggal.map((item) => [
-                    item['id'] ?? '',
-                    item['nama'] ?? '',
-                    item['pic'] ?? '',
-                    item['tanggal'] ?? '',
-                    item['jamReservasi'] ?? '',
-                  ]).toList(),
-                  headerStyle: pw.TextStyle(
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.white,
-                  ),
-                  headerDecoration: pw.BoxDecoration(
-                    color: PdfColor.fromInt(0xFF109E88),
-                  ),
-                  cellAlignment: pw.Alignment.center,
-                  cellStyle: const pw.TextStyle(fontSize: 12),
-                  columnWidths: {
-                    0: pw.FlexColumnWidth(2),
-                    1: pw.FlexColumnWidth(3),
-                    2: pw.FlexColumnWidth(2),
-                    3: pw.FlexColumnWidth(2),
-                    4: pw.FlexColumnWidth(2),
-                  },
-                ),
+            return widgets;
+          },
 
-                pw.SizedBox(height: 8),
-
-                // Total reservasi per tanggal
-                pw.Align(
-                  alignment: pw.Alignment.centerRight,
-                  child: pw.Text(
-                    'Total Reservasi: ${dataPerTanggal.length}',
-                    style: pw.TextStyle(
-                      fontSize: 12,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColor.fromInt(0xFF109E88),
-                    ),
-                  ),
-                ),
-              ];
-            },
-            footer: (context) {
-              return pw.Container(
-                alignment: pw.Alignment.centerRight,
-                margin: const pw.EdgeInsets.only(top: 1.0 * PdfPageFormat.cm),
-                child: pw.Text(
-                  'Halaman ${context.pageNumber} dari ${context.pagesCount}',
-                  style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey),
-                ),
-              );
-            },
-          ),
-        );
-      }
+          footer: (context) => pw.Align( alignment: pw.Alignment.centerRight, child: pw.Text( 'Halaman ${context.pageNumber} dari ${context.pagesCount}', ), ),
+        ),
+      );
 
       final bytes = await pdf.save();
 
@@ -419,6 +508,33 @@ class _LaporanContentState extends State<LaporanContent> {
     }
   }
 
+  pw.Widget _pdfHeaderCell(String text) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(6),
+      child: pw.Center(
+        child: pw.Text(
+          text,
+          style: pw.TextStyle(
+            color: PdfColors.white,
+            fontWeight: pw.FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  pw.Widget _pdfCell(String? text) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(6),
+      child: pw.Text(
+        text ?? '-',
+        textAlign: pw.TextAlign.center,
+        maxLines: 2, // biar nama panjang tidak merusak layout
+        overflow: pw.TextOverflow.clip,
+      ),
+    );
+  }
+
   Future<void> _selectEndDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -449,22 +565,23 @@ class _LaporanContentState extends State<LaporanContent> {
     });
   }
 
-  void _applyFilter() {
-    if (_startDate != null && _endDate != null) {
-      setState(() {
-        _isFilterActive = true;
-      });
-    }
-  }
-
   String _formatDate(DateTime? date) {
     if (date == null) return 'Pilih Tanggal';
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
   DateTime _parseDate(String dateString) {
-    final parts = dateString.split('/');
-    return DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+    try {
+      final parsed = DateTime.parse(dateString);
+      return DateTime(parsed.year, parsed.month, parsed.day); // 🔥 buang jam & timezone
+    } catch (e) {
+      final parts = dateString.split('/');
+      return DateTime(
+        int.parse(parts[2]),
+        int.parse(parts[1]),
+        int.parse(parts[0]),
+      );
+    }
   }
 
   List<Map<String, String>> _getFilteredAppointmentData() {
@@ -472,8 +589,10 @@ class _LaporanContentState extends State<LaporanContent> {
 
     return _appointmentData.where((appointment) {
       final appointmentDate = _parseDate(appointment['tanggal']!);
-      return appointmentDate.isAfter(_startDate!.subtract(Duration(days: 1))) &&
-          appointmentDate.isBefore(_endDate!.add(Duration(days: 1)));
+      return (appointmentDate.isAtSameMomentAs(_startDate!) ||
+          appointmentDate.isAfter(_startDate!)) &&
+          (appointmentDate.isAtSameMomentAs(_endDate!) ||
+              appointmentDate.isBefore(_endDate!));
     }).toList();
   }
 
@@ -482,8 +601,10 @@ class _LaporanContentState extends State<LaporanContent> {
 
     return _transaksiData.where((transaksi) {
       final transaksiDate = _parseDate(transaksi['tanggal']!);
-      return transaksiDate.isAfter(_startDate!.subtract(Duration(days: 1))) &&
-          transaksiDate.isBefore(_endDate!.add(Duration(days: 1)));
+      return (transaksiDate.isAtSameMomentAs(_startDate!) ||
+          transaksiDate.isAfter(_startDate!)) &&
+          (transaksiDate.isAtSameMomentAs(_endDate!) ||
+              transaksiDate.isBefore(_endDate!));
     }).toList();
   }
 
@@ -495,7 +616,9 @@ class _LaporanContentState extends State<LaporanContent> {
     final doctorCounts = <String, int>{};
 
     for (var appointment in filteredData) {
-      final doctor = appointment['pic']!;
+      final doctor = _shortDoctorName(appointment['pic']!)
+          .toLowerCase()
+          .trim();
       doctorCounts[doctor] = (doctorCounts[doctor] ?? 0) + 1;
     }
 
@@ -503,7 +626,7 @@ class _LaporanContentState extends State<LaporanContent> {
     final List<DoctorChartData> chartData = [];
 
     for (int i = 0; i < _allDoctorsFromDatabase.length; i++) {
-      final doctor = _allDoctorsFromDatabase[i];
+      final doctor = _allDoctorsFromDatabase[i].toLowerCase().trim();
       final count = doctorCounts[doctor] ?? 0; // 0 jika tidak ada reservasi
       final color = _doctorColors[i % _doctorColors.length];
       chartData.add(DoctorChartData(doctor, count, color));
@@ -548,7 +671,7 @@ class _LaporanContentState extends State<LaporanContent> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.withOpacity(0.25)),
+        border: Border.all(color: Colors.grey.withOpacity(0.5), width: 2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -557,22 +680,22 @@ class _LaporanContentState extends State<LaporanContent> {
             'Semua Dokter - Jumlah Reservasi',
             style: TextStyle(
               fontFamily: 'Afacad',
-              fontSize: 18,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Color(0xFF109E88),
             ),
           ),
-          SizedBox(height: 12),
+          SizedBox(height: 10),
           Text(
             'Menampilkan semua dokter dari database, termasuk yang tidak memiliki reservasi pada periode terpilih',
             style: TextStyle(
               fontFamily: 'Afacad',
-              fontSize: 12,
+              fontSize: 16,
               color: Colors.grey[600],
               fontStyle: FontStyle.italic,
             ),
           ),
-          SizedBox(height: 16),
+          SizedBox(height: 20),
           Expanded(
             child: BarChart(
               BarChartData(
@@ -591,7 +714,7 @@ class _LaporanContentState extends State<LaporanContent> {
                         TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                          fontSize: 12,
                         ),
                         children: [
                           TextSpan(
@@ -600,7 +723,7 @@ class _LaporanContentState extends State<LaporanContent> {
                                 : '$count reservasi',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 12,
+                              fontSize: 10,
                             ),
                           ),
                         ],
@@ -618,28 +741,23 @@ class _LaporanContentState extends State<LaporanContent> {
                         if (index >= 0 && index < chartData.length) {
                           return Padding(
                             padding: const EdgeInsets.only(top: 8.0),
-                            child: RotatedBox(
-                              quarterTurns: 1,
-                              child: Text(
-                                chartData[index].doctor,
+                            child: Text(
+                              _shortDoctorName(chartData[index].doctor),
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 14,
                                   color: Colors.black,
                                   fontFamily: 'Afacad',
-                                  fontWeight: chartData[index].appointmentCount > 0
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
+                                  fontWeight: FontWeight.bold
                                 ),
                                 textAlign: TextAlign.center,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                            ),
                           );
                         }
                         return Text('');
                       },
-                      reservedSize: 80, // Lebih banyak ruang untuk nama dokter yang panjang
+                      reservedSize: 40, // Lebih banyak ruang untuk nama dokter yang panjang
                     ),
                   ),
                   leftTitles: AxisTitles(
@@ -650,9 +768,10 @@ class _LaporanContentState extends State<LaporanContent> {
                         return Text(
                           value.toInt().toString(),
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 14,
                             color: Colors.black,
                             fontFamily: 'Afacad',
+                            fontWeight: FontWeight.bold
                           ),
                         );
                       },
@@ -739,7 +858,7 @@ class _LaporanContentState extends State<LaporanContent> {
                         Text(
                           data.doctor,
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 13,
                             fontFamily: 'Afacad',
                             color: Colors.black,
                             fontWeight: hasReservations ? FontWeight.bold : FontWeight.normal,
@@ -749,7 +868,7 @@ class _LaporanContentState extends State<LaporanContent> {
                         Text(
                           '(${data.appointmentCount})',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 13,
                             fontFamily: 'Afacad',
                             color: hasReservations ? Colors.black : Colors.grey[600],
                             fontWeight: FontWeight.bold,
@@ -875,7 +994,7 @@ class _LaporanContentState extends State<LaporanContent> {
                 color: _selectedSection == 0 ? Colors.white : Color(0xFF109E88),
                 fontWeight: FontWeight.bold,
                 fontFamily: 'Afacad',
-                fontSize: 16,
+                fontSize: 20,
               ),
             ),
           ),
@@ -902,7 +1021,7 @@ class _LaporanContentState extends State<LaporanContent> {
                 color: _selectedSection == 1 ? Colors.white : Color(0xFF109E88),
                 fontFamily: 'Afacad',
                 fontWeight: FontWeight.bold,
-                fontSize: 16,
+                fontSize: 20,
               ),
             ),
           ),
@@ -919,7 +1038,7 @@ class _LaporanContentState extends State<LaporanContent> {
           'Filter Periode:',
           style: TextStyle(
             fontFamily: 'Afacad',
-            fontSize: 16,
+            fontSize: 20,
             color: Color(0xFF109E88),
             fontWeight: FontWeight.bold,
           ),
@@ -996,6 +1115,7 @@ class _LaporanContentState extends State<LaporanContent> {
                 child: Text(
                   'HAPUS FILTER',
                   style: TextStyle(
+                    fontSize: 14,
                     color: Colors.red,
                     fontFamily: 'Afacad',
                     fontWeight: FontWeight.bold,
@@ -1024,6 +1144,7 @@ class _LaporanContentState extends State<LaporanContent> {
                 child: Text(
                   'EXPORT LAPORAN',
                   style: TextStyle(
+                    fontSize: 20,
                     color: Colors.white,
                     fontFamily: 'Afacad',
                     fontWeight: FontWeight.bold,
@@ -1049,6 +1170,9 @@ class _LaporanContentState extends State<LaporanContent> {
   }
 
   Widget _buildAppointmentSection() {
+    if (_isLoadingReservasi) {
+      return Center(child: CircularProgressIndicator());
+    }
     final filteredData = _getFilteredAppointmentData();
     final totalData = _appointmentData.length;
     final filteredCount = filteredData.length;
@@ -1065,7 +1189,7 @@ class _LaporanContentState extends State<LaporanContent> {
               : 'Total Reservasi: $totalData',
           style: TextStyle(
             fontFamily: 'Afacad',
-            fontSize: 16,
+            fontSize: 18,
             color: Color(0xFF109E88),
             fontWeight: FontWeight.bold,
           ),
@@ -1073,10 +1197,11 @@ class _LaporanContentState extends State<LaporanContent> {
         SizedBox(height: 16),
         Card(
           elevation: 0,
+          clipBehavior: Clip.antiAlias,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(30),
             side: BorderSide(
-              color: Colors.grey.withOpacity(0.25),
+              color: Colors.black,
               width: 1,
             ),
           ),
@@ -1096,21 +1221,21 @@ class _LaporanContentState extends State<LaporanContent> {
                       dividerThickness: 1,
                       border: TableBorder(
                         horizontalInside: BorderSide(
-                          color: Colors.grey.withOpacity(0.25),
+                          color: Colors.black,
                           width: 1,
                         ),
                         verticalInside: BorderSide(
-                          color: Colors.grey.withOpacity(0.25),
+                          color: Colors.black,
                           width: 1,
                         ),
                       ),
                       columns: [
                         _buildDataColumnAppointment('ID'),
-                        _buildDataColumnAppointment('Nama Pasien'),
-                        _buildDataColumnAppointment('Tipe'),
+                        _buildDataColumnAppointment('NAMA PASIEN'),
+                        _buildDataColumnAppointment('TIPE'),
                         _buildDataColumnAppointment('PIC'),
-                        _buildDataColumnAppointment('Status'),
-                        _buildDataColumnAppointment('Tanggal')
+                        _buildDataColumnAppointment('TANGGAL RESERVASI'),
+                        _buildDataColumnAppointment('STATUS')
                       ],
                       rows: filteredData.map((appointment) =>
                           _buildDataRowAppointment(
@@ -1118,8 +1243,8 @@ class _LaporanContentState extends State<LaporanContent> {
                               appointment['nama']!,
                               appointment['tipe']!,
                               appointment['pic']!,
-                              appointment['status']!,
-                              appointment['tanggal']!
+                              appointment['tanggal']!,
+                              appointment['status']!
                           )
                       ).toList(),
                     ),
@@ -1134,16 +1259,17 @@ class _LaporanContentState extends State<LaporanContent> {
   }
 
   Widget _buildTransaksiSection() {
-    final filteredData = _getFilteredTransaksiData();
-    final totalData = _transaksiData.length;
+    final filteredData = _getFilteredAppointmentData();
+    final totalData = _appointmentData.length;
     final filteredCount = filteredData.length;
+
+    final pending = _getFilteredTransaksiData();
+    final pendingCount = pending.length;
 
     return Column(
       children: [
         Text(
-          _isFilterActive
-              ? 'Menampilkan $filteredCount dari $totalData transaksi'
-              : 'Total Transaksi: $totalData',
+          '$pendingCount transaksi tertunda',
           style: TextStyle(
             fontFamily: 'Afacad',
             fontSize: 16,
@@ -1154,10 +1280,11 @@ class _LaporanContentState extends State<LaporanContent> {
         SizedBox(height: 16),
         Card(
           elevation: 0,
+          clipBehavior: Clip.antiAlias,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(30),
             side: BorderSide(
-              color: Colors.grey.withOpacity(0.25),
+              color: Colors.black,
               width: 1,
             ),
           ),
@@ -1177,33 +1304,174 @@ class _LaporanContentState extends State<LaporanContent> {
                       dividerThickness: 1,
                       border: TableBorder(
                         horizontalInside: BorderSide(
-                          color: Colors.grey.withOpacity(0.25),
+                          color: Colors.black,
                           width: 1,
                         ),
                         verticalInside: BorderSide(
-                          color: Colors.grey.withOpacity(0.25),
+                          color: Colors.black,
                           width: 1,
                         ),
                       ),
                       columns: [
-                        _buildDataColumn('ID'),
-                        _buildDataColumn('Tanggal'),
-                        _buildDataColumn('Nama Pasien'),
-                        _buildDataColumn('Tipe'),
-                        _buildDataColumn('PIC'),
-                        _buildDataColumn('Total'),
-                        _buildDataColumn('Aksi'),
+                        _buildDataColumnAppointment('ID'),
+                        _buildDataColumnAppointment('NAMA PASIEN'),
+                        _buildDataColumnAppointment('TANGGAL'),
+                        _buildDataColumnAppointment('TIPE'),
+                        _buildDataColumnAppointment('PIC'),
+                        _buildDataColumnAppointment('TOTAL'),
+                        _buildDataColumnAppointment('DETAIL'),
                       ],
-                      rows: filteredData.map((transaksi) =>
-                          _buildDataRow(
-                            transaksi['id']!,
-                            transaksi['tanggal']!,
-                            transaksi['nama']!,
-                            transaksi['tipe']!,
-                            transaksi['pic']!,
-                            transaksi['total']!,
-                          )
-                      ).toList(),
+                      rows: pending.map((e) {
+                        return DataRow(cells: [
+                          _buildDataCell(e['id'] ?? ''),
+                          _buildDataCell(e['nama'] ?? ''),
+                          _buildDataCell(e['tanggal'] ?? ''),
+                          _buildDataCell(e['tipe'] ?? ''),
+                          _buildDataCell(e['pic'] ?? ''),
+                          _buildDataCell(e['amount'] ?? ''),
+
+                          DataCell(
+                            Center(
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                ),
+
+                                onPressed: () async {
+                                  final id = e['id'];
+
+                                  if (id == null || id == '-' || id.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text("ID tidak valid")),
+                                    );
+                                    return;
+                                  }
+
+                                  try {
+                                    final response = await http.put(
+                                      Uri.parse('${ApiService.basedUrl}/reservasi/payment/$id'),
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                      },
+                                      body: jsonEncode({
+                                        "paymentStatus": "paid",
+                                      }),
+                                    );
+
+                                    if (response.statusCode == 200) {
+                                      setState(() async {
+                                        // 1. HAPUS dari tabel pending transaksi
+                                        _transaksiData.removeWhere((item) => item['id'] == id);
+
+                                        // 2. UPDATE di appointment (biar laporan & chart ikut berubah)
+                                        final index = _appointmentData.indexWhere((item) => item['id'] == id);
+
+                                        if (index != -1) {
+                                          _appointmentData[index]['paymentStatus'] = 'paid';
+                                        }
+
+                                        // 🔥 RELOAD SEMUA DATA SEKALIGUS
+                                        await _fetchReservasiLaporan();
+                                        await _fetchTransaksiPending();
+                                      });
+
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text("Pembayaran berhasil dikonfirmasi")),
+                                      );
+                                    } else {
+                                      print("ERROR: ${response.body}");
+
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text("Gagal konfirmasi pembayaran")),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    print("EXCEPTION: $e");
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text("Terjadi kesalahan server")),
+                                    );
+                                  }
+                                },
+                                child: Text(
+                                  'KONFIRMASI PEMBAYARAN',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontFamily: 'Afacad',
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ]);
+                      }).toList(),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        SizedBox(height: 30),
+
+        Text(
+          _isFilterActive
+              ? 'Menampilkan $filteredCount dari $totalData transaksi'
+              : 'Total Transaksi: $totalData',
+          style: TextStyle(
+            fontFamily: 'Afacad',
+            fontSize: 16,
+            color: Color(0xFF109E88),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        SizedBox(height: 16),
+        Card(
+          elevation: 0,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+            side: BorderSide(
+              color: Colors.black,
+              width: 1,
+            ),
+          ),
+          color: Colors.white,
+          child: Padding(
+            padding: EdgeInsets.zero,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                    child: DataTable(
+                      columnSpacing: 0,
+                      horizontalMargin: 0,
+                      dataRowHeight: 75,
+                      dividerThickness: 1,
+                      border: TableBorder(
+                        horizontalInside: BorderSide(
+                          color: Colors.black,
+                          width: 1,
+                        ),
+                        verticalInside: BorderSide(
+                          color: Colors.black,
+                          width: 1,
+                        ),
+                      ),
+                      columns: [
+                        _buildDataColumnAppointment('ID'),
+                        _buildDataColumnAppointment('NAMA PASIEN'),
+                        _buildDataColumnAppointment('TANGGAL RESERVASI'),
+                        _buildDataColumnAppointment('TIPE'),
+                        _buildDataColumnAppointment('PIC'),
+                        _buildDataColumnAppointment('TOTAL'),
+                        _buildDataColumnAppointment('DETAIL'),
+                      ],
+                      rows: filteredData.map((transaksi) => _buildDataRow(transaksi)).toList(),
                     ),
                   ),
                 );
@@ -1215,51 +1483,24 @@ class _LaporanContentState extends State<LaporanContent> {
     );
   }
 
-  DataColumn _buildDataColumn(String label) {
-    return DataColumn(
-      label: Expanded(
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: 8),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'Afacad',
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-              color: const Color(0xFF109E88),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  DataRow _buildDataRow(
-      String id,
-      String tanggal,
-      String name,
-      String type,
-      String pic,
-      String total,
-      ) {
+  DataRow _buildDataRow(Map<String, String> transaksi) {
     return DataRow(
       cells: [
-        _buildDataCell(id),
-        _buildDataCell(tanggal),
-        _buildDataCell(name),
+        _buildDataCell(transaksi['id'] ?? ''),
+        _buildDataCell(transaksi['nama'] ?? ''),
+        _buildDataCell(transaksi['tanggal'] ?? ''),
         DataCell(
           Center(
             child: Container(
-              width: 150,
-              height: 45,
+              width: 100,
+              height: 30,
               decoration: BoxDecoration(
-                color: _getTypeColor(type),
+                color: _getTypeColor(transaksi['tipe'] ?? ''),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
                 child: Text(
-                  type,
+                  transaksi['tipe'] ?? '',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -1271,8 +1512,8 @@ class _LaporanContentState extends State<LaporanContent> {
             ),
           ),
         ),
-        _buildDataCell(pic),
-        _buildDataCell(total),
+        _buildDataCell(transaksi['pic'] ?? ''),
+        _buildDataCell(transaksi['amount'] ?? ''),
         DataCell(
             Center(
               child: IconButton(
@@ -1285,7 +1526,7 @@ class _LaporanContentState extends State<LaporanContent> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => DetailTransaksi(),
+                      builder: (context) => DetailTransaksi(data: transaksi),
                     ),
                   );
                 },
@@ -1296,39 +1537,20 @@ class _LaporanContentState extends State<LaporanContent> {
     );
   }
 
-  void _showDetailTransaksi(String id) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Detail Transaksi $id'),
-          content: Text('Detail informasi untuk transaksi $id akan ditampilkan di sini.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('Tutup'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   DataColumn _buildDataColumnAppointment(String label) {
     return DataColumn(
       label: Expanded(
         child: Container(
           padding: EdgeInsets.symmetric(vertical: 8),
+          color: Color(0xFF109E88),
           alignment: Alignment.center,
           child: Text(
             label,
             style: TextStyle(
               fontFamily: 'Afacad',
               fontWeight: FontWeight.bold,
-              fontSize: 20,
-              color: const Color(0xFF109E88),
+              fontSize: 18,
+              color: Colors.white,
             ),
           ),
         ),
@@ -1341,8 +1563,8 @@ class _LaporanContentState extends State<LaporanContent> {
       String name,
       String type,
       String pic,
-      String status,
       String tanggal,
+      String status,
       ) {
     return DataRow(
       cells: [
@@ -1351,8 +1573,8 @@ class _LaporanContentState extends State<LaporanContent> {
         DataCell(
           Center(
             child: Container(
-              width: 150,
-              height: 45,
+              width: 100,
+              height: 30,
               decoration: BoxDecoration(
                 color: _getTypeColor(type),
                 borderRadius: BorderRadius.circular(10),
@@ -1372,13 +1594,14 @@ class _LaporanContentState extends State<LaporanContent> {
           ),
         ),
         _buildDataCell(pic),
+        _buildDataCell(tanggal),
         DataCell(
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 150,
-                height: 45,
+                width: 100,
+                height: 30,
                 decoration: BoxDecoration(
                   color: Colors.green,
                   borderRadius: BorderRadius.circular(10),
@@ -1398,7 +1621,6 @@ class _LaporanContentState extends State<LaporanContent> {
             ],
           ),
         ),
-        _buildDataCell(tanggal)
       ],
     );
   }
@@ -1422,11 +1644,11 @@ class _LaporanContentState extends State<LaporanContent> {
 
   Color _getTypeColor(String type) {
     switch (type) {
-      case 'OFFLINE':
+      case 'MEDIS':
         return const Color(0xFFFF8000);
-      case 'ONLINE':
+      case 'KONSULTASI':
         return const Color(0xFF59EDAF);
-      case 'NON-MEDIS':
+      case 'NON_MEDIS':
         return const Color(0xFFF7D915);
       default:
         return Colors.grey;

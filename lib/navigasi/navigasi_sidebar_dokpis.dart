@@ -6,39 +6,19 @@ import '../providers/auth_provider.dart';
 class NavigationSidebarDokpis extends StatelessWidget {
   final int currentIndex;
   final BuildContext context; // Add context parameter
+  final Function(int) onTap; // 👈 INI LETAKNYA
 
   const NavigationSidebarDokpis({
     Key? key,
     required this.currentIndex,
-    required this.context, // Require context in constructor
+    required this.context,
+    required this.onTap, // 👈 TAMBAH INI
   }) : super(key: key);
 
   void _onItemTapped(int index) {
-    if (index == currentIndex) return; // Don't navigate if already on the page
+    if (index == currentIndex) return;
 
-    switch (index) {
-      case 0:
-        Navigator.pushNamed(
-          context,
-          '/dokter/dashboard'
-        );
-        break;
-      case 1:
-        Navigator.pushNamed(
-          context,
-          '/dokter/jadwal'
-        );
-        break;
-      case 2:
-        Navigator.pushNamed(
-          context,
-          '/dokter/laporan'
-        );
-        break;
-      case 3:
-       _logout();
-        break;
-    }
+    onTap(index); // 👈 INI PENGGANTI NAVIGATOR
   }
 
   // Fungsi logout
@@ -115,44 +95,42 @@ class NavigationSidebarDokpis extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 20.0, top: 20.0, bottom: 20.0),
-      child: Container(
-        width: 250,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
-              spreadRadius: 2,
-              blurRadius: 5,
-              offset: const Offset(0, 3),
-            ),
-          ],
+    return Container(
+      width: 250,
+      height: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          right: BorderSide(color: Colors.grey.shade400, width: 1),
         ),
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            // Navigation Items
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Image.asset('assets/images/logo.png', width: 150),
-                  ),
-                  _buildNavItem(Icons.dashboard, 'Dashboard', 0),
-                  _buildNavItem(Icons.article, 'Jadwal', 1),
-                  _buildNavItem(Icons.ad_units, 'Laporan', 2),
-                  _buildNavItem(Icons.logout, 'Logout', 3),
-                ],
-              ),
+        // boxShadow: [
+        //   BoxShadow(
+        //     color: Colors.black.withOpacity(0.25), // 👈 lebih gelap
+        //     blurRadius: 20,
+        //     spreadRadius: 2,
+        //     offset: const Offset(5, 0), // kanan
+        //   ),
+        // ],
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 20),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Image.asset('assets/images/logo.png', width: 150),
+                ),
+                _buildNavItem(Icons.dashboard, 'Dashboard', 0),
+                _buildNavItem(Icons.article, 'Jadwal', 1),
+                _buildNavItem(Icons.ad_units, 'Laporan', 2),
+                _buildNavItem(Icons.logout, 'Logout', 3),
+              ],
             ),
-            const SizedBox(height: 20),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -180,7 +158,13 @@ class NavigationSidebarDokpis extends StatelessWidget {
             color: Color(0xFF109E88),
           ),
         ),
-        onTap: () => _onItemTapped(index),
+        onTap: () {
+          if (title == 'Logout') {
+            _logout(); // 👈 panggil logout
+          } else {
+            _onItemTapped(index);
+          }
+        },
       ),
     );
   }

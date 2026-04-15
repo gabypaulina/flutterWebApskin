@@ -192,12 +192,12 @@ class _DokterContent extends StatelessWidget {
 
     return Container(
       width: 350,
-      constraints: BoxConstraints(maxHeight: 300), // Batasi tinggi maksimum
+      constraints: BoxConstraints(minHeight: 300), // Batasi tinggi maksimum
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: Colors.grey.withOpacity(0.3),
-          width: 1,
+          color: Colors.grey.withOpacity(0.5),
+          width: 2,
         ),
       ),
       child: SingleChildScrollView( // Tambahkan ScrollView jika konten terlalu panjang

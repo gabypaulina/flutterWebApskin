@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show Uint8List, kIsWeb;
+import 'package:universal_html/html.dart' as html;
 // import 'dart:html' as html;
 import '../../navigasi/navigasi_sidebar.dart';
 import '../../services/api_service.dart';
@@ -24,61 +25,61 @@ class _TambahArtikelState extends State<TambahArtikel> {
 
   // Di fungsi _pickImage(), pastikan hanya menerima file gambar
   Future<void> _pickImage() async {
-    // if (kIsWeb) {
-    //   final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
-    //   uploadInput.accept = 'image/*'; // Hanya terima gambar
-    //   uploadInput.click();
-    //
-    //   uploadInput.onChange.listen((e) async {
-    //     final files = uploadInput.files;
-    //     if (files != null && files.isNotEmpty) {
-    //       final file = files[0];
-    //
-    //       // Validasi tipe file di frontend juga
-    //       if (!file.type.startsWith('image/')) {
-    //         ScaffoldMessenger.of(context).showSnackBar(
-    //           SnackBar(
-    //             content: Text('Hanya file gambar yang diperbolehkan'),
-    //             backgroundColor: Colors.red,
-    //           ),
-    //         );
-    //         return;
-    //       }
-    //
-    //       final reader = html.FileReader();
-    //       reader.readAsArrayBuffer(file);
-    //       await reader.onLoad.first;
-    //
-    //       final arrayBuffer = reader.result;
-    //       final bytes = Uint8List.fromList(arrayBuffer as List<int>);
-    //
-    //       setState(() {
-    //         _selectedImage = {
-    //           'bytes': bytes,
-    //           'filename': file.name,
-    //           'type': file.type,
-    //           'size': file.size
-    //         };
-    //       });
-    //
-    //       print('File selected: ${file.name}, type: ${file.type}, size: ${file.size} bytes');
-    //     }
-    //   });
-    // } else {
-    //   final pickedFile = await ImagePicker().pickImage(
-    //     source: ImageSource.gallery,
-    //     maxWidth: 800,
-    //     maxHeight: 600,
-    //     imageQuality: 85,
-    //   );
-    //
-    //   if (pickedFile != null) {
-    //     setState(() {
-    //       _selectedImage = File(pickedFile.path);
-    //     });
-    //     print('File selected: ${pickedFile.path}');
-    //   }
-    // }
+    if (kIsWeb) {
+      final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
+      uploadInput.accept = 'image/*'; // Hanya terima gambar
+      uploadInput.click();
+
+      uploadInput.onChange.listen((e) async {
+        final files = uploadInput.files;
+        if (files != null && files.isNotEmpty) {
+          final file = files[0];
+
+          // Validasi tipe file di frontend juga
+          if (!file.type.startsWith('image/')) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Hanya file gambar yang diperbolehkan'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            return;
+          }
+
+          final reader = html.FileReader();
+          reader.readAsArrayBuffer(file);
+          await reader.onLoad.first;
+
+          final arrayBuffer = reader.result;
+          final bytes = Uint8List.fromList(arrayBuffer as List<int>);
+
+          setState(() {
+            _selectedImage = {
+              'bytes': bytes,
+              'filename': file.name,
+              'type': file.type,
+              'size': file.size
+            };
+          });
+
+          print('File selected: ${file.name}, type: ${file.type}, size: ${file.size} bytes');
+        }
+      });
+    } else {
+      final pickedFile = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 600,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+        });
+        print('File selected: ${pickedFile.path}');
+      }
+    }
   }
 
   @override
@@ -152,7 +153,7 @@ class _TambahArtikelState extends State<TambahArtikel> {
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: const Color(0xFFD9D9D9),
+                                color: Colors.grey.shade500,
                                 width: 1.5,
                               ),
                             ),
@@ -182,7 +183,7 @@ class _TambahArtikelState extends State<TambahArtikel> {
                                       Text(
                                         'Upload',
                                         style: TextStyle(
-                                          fontSize: 12,
+                                          fontSize: 14,
                                           color: const Color(0xFF109E88),
                                           fontFamily: 'Afacad',
                                         ),
@@ -209,16 +210,16 @@ class _TambahArtikelState extends State<TambahArtikel> {
                           decoration: InputDecoration(
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(20),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFD9D9D9), // Gray border color
-                                width: 1.0,
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade500, // Gray border color
+                                width: 1.5,
                               ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(20),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFD9D9D9), // Gray border color
-                                width: 1.0,
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade500, // Gray border color
+                                width: 1.5,
                               ),
                             ),
                             focusedBorder: OutlineInputBorder(
@@ -248,16 +249,16 @@ class _TambahArtikelState extends State<TambahArtikel> {
                           decoration: InputDecoration(
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(20),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFD9D9D9), // Gray border color
-                                width: 1.0,
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade500, // Gray border color
+                                width: 1.5,
                               ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(20),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFD9D9D9), // Gray border color
-                                width: 1.0,
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade500, // Gray border color
+                                width: 1.5,
                               ),
                             ),
                             focusedBorder: OutlineInputBorder(
@@ -288,16 +289,16 @@ class _TambahArtikelState extends State<TambahArtikel> {
                           decoration: InputDecoration(
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(20),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFD9D9D9), // Gray border color
-                                width: 1.0,
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade500, // Gray border color
+                                width: 1.5,
                               ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(20),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFD9D9D9), // Gray border color
-                                width: 1.0,
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade500, // Gray border color
+                                width: 1.5,
                               ),
                             ),
                             focusedBorder: OutlineInputBorder(
@@ -314,7 +315,7 @@ class _TambahArtikelState extends State<TambahArtikel> {
 
                         SizedBox(
                           width: double.infinity,
-                          height: 32,
+                          height: 40,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF109E88),
@@ -383,7 +384,7 @@ class _TambahArtikelState extends State<TambahArtikel> {
                               style: TextStyle(
                                 color: Colors.white,
                                 fontFamily: 'Afacad',
-                                fontSize: 20,
+                                fontSize: 18,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),

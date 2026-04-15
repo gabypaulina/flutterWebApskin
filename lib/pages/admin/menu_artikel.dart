@@ -248,7 +248,7 @@ class _ArtikelContentState extends State<ArtikelContent> {
                     style: TextStyle(
                       color: Colors.white,
                       fontFamily: 'Afacad',
-                      fontSize: 16,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -325,8 +325,8 @@ class _ArtikelContentState extends State<ArtikelContent> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
         side: BorderSide(
-          color: Colors.grey.withOpacity(0.25),
-          width: 1,
+          color: Colors.grey.withOpacity(0.5),
+          width: 2,
         ),
       ),
       child: Padding(

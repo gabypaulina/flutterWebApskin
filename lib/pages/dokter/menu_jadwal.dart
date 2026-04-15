@@ -18,10 +18,6 @@ class _MenuJadwalDokState extends State<MenuJadwalDok> {
     return Scaffold(
       body: Row(
         children: [
-          NavigationSidebarDokpis(
-            currentIndex: 1,
-            context: context,
-          ),
           Expanded(
             child: JadwalDokContent(),
           ),
@@ -46,6 +42,36 @@ class _JadwalDokContentState extends State<JadwalDokContent> {
 
   Timer? timer;
 
+  String _formatTanggal(String dateStr) {
+    try {
+      final parts = dateStr.split('/');
+      if (parts.length != 3) return dateStr;
+
+      final day = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final year = int.parse(parts[2]);
+
+      const months = [
+        "Januari",
+        "Februari",
+        "Maret",
+        "April",
+        "Mei",
+        "Juni",
+        "Juli",
+        "Agustus",
+        "September",
+        "Oktober",
+        "November",
+        "Desember"
+      ];
+
+      return "$day ${months[month - 1]} $year";
+    } catch (e) {
+      return dateStr;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -66,6 +92,7 @@ class _JadwalDokContentState extends State<JadwalDokContent> {
   Future<void> _fetchData() async {
     try {
       final data = await ApiService.getDoctorReservations();
+      print(todayReservations);
 
       setState(() {
         latestTodayReservations = data['latestTodayReservations'] ?? [];
@@ -118,7 +145,7 @@ class _JadwalDokContentState extends State<JadwalDokContent> {
                   mainAxisSpacing: 10,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  childAspectRatio: 3.8,
+                  childAspectRatio: 3.5,
                   children: latestTodayReservations.map((appointment) {
                     return _buildAppointmentCard(
                       date: appointment['tanggalReservasi'] ?? '',
@@ -126,8 +153,9 @@ class _JadwalDokContentState extends State<JadwalDokContent> {
                       type: appointment['tipe'] ?? '',
                       patientName: appointment['namaPasien'] ?? '',
                       patientAge: appointment['age'] != null
-                          ? "${appointment['age']} tahun"
-                          : "-",                      context: context,
+                          ? appointment['age'].toString()
+                          : '-',
+                      context: context,
                       appointment: appointment,
                     );
                   }).toList(),
@@ -157,14 +185,16 @@ class _JadwalDokContentState extends State<JadwalDokContent> {
                   mainAxisSpacing: 10,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  childAspectRatio: 3.8,
+                  childAspectRatio: 3.5,
                   children: todayReservations.map((appointment) {
                     return _buildAppointmentCard(
                       date: appointment['tanggalReservasi'] ?? '',
                       time: appointment['jamReservasi'] ?? '',
                       type: appointment['tipe'] ?? '',
                       patientName: appointment['namaPasien'] ?? '',
-                      patientAge: "Umur tidak tersedia",
+                      patientAge: appointment['age'] != null
+                          ? appointment['age'].toString()
+                          : '-',
                       context: context,
                       appointment: appointment,
                     );
@@ -199,29 +229,12 @@ class _JadwalDokContentState extends State<JadwalDokContent> {
               'Selamat Datang, Dokter!',
               style: TextStyle(
                 fontFamily: 'Afacad',
-                fontSize: 16,
+                fontSize: 18,
                 color: const Color(0xFF109E88),
               ),
             ),
           ],
         ),
-        // Container(
-        //   width: 50,
-        //   height: 50,
-        //   decoration: BoxDecoration(
-        //     borderRadius: BorderRadius.circular(10),
-        //     border: Border.all(
-        //       color: Colors.grey.withOpacity(0.25),
-        //       width: 1,
-        //     ),
-        //   ),
-        //   child: IconButton(
-        //     icon: const Icon(Icons.notifications, color: Color(0xFF109E88)),
-        //     onPressed: () {
-        //       // Handle notification button press
-        //     },
-        //   ),
-        // ),
       ],
     );
   }
@@ -236,37 +249,37 @@ class _JadwalDokContentState extends State<JadwalDokContent> {
     required dynamic appointment,
   }) {
     return SizedBox(
-      height: 80, // Height tetap untuk card appointment
       child: Card(
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
           side: BorderSide(
             color: Colors.grey.withOpacity(0.25),
-            width: 1,
+            width: 3,
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(12.0), // Padding dikurangi
+          padding: const EdgeInsets.all(18), // Padding dikurangi
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
                     child: Text(
-                      'Tanggal: $date',
+                      'Tanggal: ${_formatTanggal(date)}',
                       style: TextStyle(
                         fontFamily: 'Afacad',
-                        fontSize: 16, // Font size dikurangi
+                        fontSize: 18, // Font size dikurangi
                         fontWeight: FontWeight.bold,
                         color: const Color(0xFF109E88),
                       ),
                     ),
                   ),
                   Container(
-                    width: 80,
+                    width: 120,
                     height: 30,
                     padding: const EdgeInsets.symmetric(horizontal: 5), // Padding dikurangi
                     decoration: BoxDecoration(
@@ -278,7 +291,7 @@ class _JadwalDokContentState extends State<JadwalDokContent> {
                         type,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 16,
+                          fontSize: 18,
                           fontFamily: 'Afacad',
                           fontWeight: FontWeight.bold,
                         ),
@@ -292,7 +305,8 @@ class _JadwalDokContentState extends State<JadwalDokContent> {
                 "Jam: $time",
                 style: TextStyle(
                   fontFamily: 'Afacad',
-                  fontSize: 16, // Font size dikurangi
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18, // Font size dikurangi
                   color: const Color(0xFF109E88),
                 ),
               ),
@@ -306,17 +320,17 @@ class _JadwalDokContentState extends State<JadwalDokContent> {
                         "Pasien : ",
                         style: TextStyle(
                           fontFamily: 'Afacad',
-                          fontSize: 16, // Font size dikurangi
+                          fontSize: 18, // Font size dikurangi
                           fontWeight: FontWeight.bold,
                           color: const Color(0xFF109E88),
                         ),
                       ),
                       const SizedBox(width: 4), // Spasi dikurangi
                       Text(
-                        "$patientName / $patientAge",
+                        "$patientName / $patientAge tahun",
                         style: TextStyle(
                           fontFamily: 'Afacad',
-                          fontSize: 16, // Font size dikurangi
+                          fontSize: 18, // Font size dikurangi
                           color: const Color(0xFF109E88),
                         ),
                       ),
@@ -349,9 +363,9 @@ class _JadwalDokContentState extends State<JadwalDokContent> {
 
   Color _getTypeColor(String type) {
     switch (type) {
-      case 'OFFLINE':
+      case 'MEDIS':
         return const Color(0xFFFF8000);
-      case 'ONLINE':
+      case 'KONSULTASI':
         return const Color(0xFF59EDAF);
       case 'NON-MEDIS':
         return const Color(0xFFF7D915);

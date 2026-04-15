@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show Uint8List, kIsWeb;
+import 'package:universal_html/html.dart' as html;
 // import 'dart:html' as html;
 import '../../navigasi/navigasi_sidebar.dart';
 import '../../services/api_service.dart';
@@ -36,62 +37,62 @@ class _EditArtikelState extends State<EditArtikel> {
   }
 
    Future<void> _pickImage() async {
-  //   if (kIsWeb) {
-  //     final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
-  //     uploadInput.accept = 'image/*';
-  //     uploadInput.click();
-  //
-  //     uploadInput.onChange.listen((e) async {
-  //       final files = uploadInput.files;
-  //       if (files != null && files.isNotEmpty) {
-  //         final file = files[0];
-  //
-  //         if (!file.type.startsWith('image/')) {
-  //           ScaffoldMessenger.of(context).showSnackBar(
-  //             SnackBar(
-  //               content: Text('Hanya file gambar yang diperbolehkan'),
-  //               backgroundColor: Colors.red,
-  //             ),
-  //           );
-  //           return;
-  //         }
-  //
-  //         final reader = html.FileReader();
-  //         reader.readAsArrayBuffer(file);
-  //         await reader.onLoad.first;
-  //
-  //         final arrayBuffer = reader.result;
-  //         final bytes = Uint8List.fromList(arrayBuffer as List<int>);
-  //
-  //         setState(() {
-  //           _selectedImage = {
-  //             'bytes': bytes,
-  //             'filename': file.name,
-  //             'type': file.type,
-  //             'size': file.size
-  //           };
-  //           _currentImageUrl = null; // Reset current image URL jika memilih gambar baru
-  //         });
-  //
-  //         print('File selected: ${file.name}, type: ${file.type}, size: ${file.size} bytes');
-  //       }
-  //     });
-  //   } else {
-  //     final pickedFile = await ImagePicker().pickImage(
-  //       source: ImageSource.gallery,
-  //       maxWidth: 800,
-  //       maxHeight: 600,
-  //       imageQuality: 85,
-  //     );
-  //
-  //     if (pickedFile != null) {
-  //       setState(() {
-  //         _selectedImage = File(pickedFile.path);
-  //         _currentImageUrl = null; // Reset current image URL jika memilih gambar baru
-  //       });
-  //       print('File selected: ${pickedFile.path}');
-  //     }
-  //   }
+    if (kIsWeb) {
+      final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
+      uploadInput.accept = 'image/*';
+      uploadInput.click();
+
+      uploadInput.onChange.listen((e) async {
+        final files = uploadInput.files;
+        if (files != null && files.isNotEmpty) {
+          final file = files[0];
+
+          if (!file.type.startsWith('image/')) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Hanya file gambar yang diperbolehkan'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            return;
+          }
+
+          final reader = html.FileReader();
+          reader.readAsArrayBuffer(file);
+          await reader.onLoad.first;
+
+          final arrayBuffer = reader.result;
+          final bytes = Uint8List.fromList(arrayBuffer as List<int>);
+
+          setState(() {
+            _selectedImage = {
+              'bytes': bytes,
+              'filename': file.name,
+              'type': file.type,
+              'size': file.size
+            };
+            _currentImageUrl = null; // Reset current image URL jika memilih gambar baru
+          });
+
+          print('File selected: ${file.name}, type: ${file.type}, size: ${file.size} bytes');
+        }
+      });
+    } else {
+      final pickedFile = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 600,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+          _currentImageUrl = null; // Reset current image URL jika memilih gambar baru
+        });
+        print('File selected: ${pickedFile.path}');
+      }
+    }
    }
 
   Future<void> _updateArtikel() async {
@@ -183,7 +184,7 @@ class _EditArtikelState extends State<EditArtikel> {
       );
     } else if (_currentImageUrl != null) {
       // Tampilkan gambar saat ini dari URL
-      final fullImageUrl = 'http://172.20.10.2:3000$_currentImageUrl';
+      final fullImageUrl = '${ApiService.basedUrl}$_currentImageUrl';
       return SizedBox(
         width: 150,
         height: 100,
@@ -303,7 +304,7 @@ class _EditArtikelState extends State<EditArtikel> {
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
-                                    color: const Color(0xFFD9D9D9),
+                                    color: Color(0xFF109E88), // Green border when focused
                                     width: 1.5,
                                   ),
                                 ),
@@ -342,15 +343,15 @@ class _EditArtikelState extends State<EditArtikel> {
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(20),
                               borderSide: const BorderSide(
-                                color: Color(0xFFD9D9D9),
-                                width: 1.0,
+                                color: Color(0xFF109E88), // Green border when focused
+                                width: 1.5,
                               ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(20),
                               borderSide: const BorderSide(
-                                color: Color(0xFFD9D9D9),
-                                width: 1.0,
+                                color: Color(0xFF109E88), // Green border when focused
+                                width: 1.5,
                               ),
                             ),
                             focusedBorder: OutlineInputBorder(
@@ -381,15 +382,15 @@ class _EditArtikelState extends State<EditArtikel> {
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(20),
                               borderSide: const BorderSide(
-                                color: Color(0xFFD9D9D9),
-                                width: 1.0,
+                                color: Color(0xFF109E88), // Green border when focused
+                                width: 1.5,
                               ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(20),
                               borderSide: const BorderSide(
-                                color: Color(0xFFD9D9D9),
-                                width: 1.0,
+                                color: Color(0xFF109E88), // Green border when focused
+                                width: 1.5,
                               ),
                             ),
                             focusedBorder: OutlineInputBorder(
@@ -421,15 +422,15 @@ class _EditArtikelState extends State<EditArtikel> {
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(20),
                               borderSide: const BorderSide(
-                                color: Color(0xFFD9D9D9),
-                                width: 1.0,
+                                color: Color(0xFF109E88), // Green border when focused
+                                width: 1.5,
                               ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(20),
                               borderSide: const BorderSide(
-                                color: Color(0xFFD9D9D9),
-                                width: 1.0,
+                                color: Color(0xFF109E88), // Green border when focused
+                                width: 1.5,
                               ),
                             ),
                             focusedBorder: OutlineInputBorder(
@@ -446,7 +447,7 @@ class _EditArtikelState extends State<EditArtikel> {
 
                         SizedBox(
                           width: double.infinity,
-                          height: 32,
+                          height: 40,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF109E88),
@@ -469,7 +470,7 @@ class _EditArtikelState extends State<EditArtikel> {
                               style: TextStyle(
                                 color: Colors.white,
                                 fontFamily: 'Afacad',
-                                fontSize: 20,
+                                fontSize: 18,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),

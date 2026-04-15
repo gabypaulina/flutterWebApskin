@@ -19,8 +19,8 @@ class MenuDashboardDok extends StatefulWidget {
 class _MenuDashboardDokState extends State<MenuDashboardDok> {
   List notifications = [];
   final SocketService socketService = SocketService();
-  String doctorName = "Dokter";
   String doctorId = "";
+  String doctorName = "";
   bool isLoading = true;
   List<dynamic> todayAppointments = [];
 
@@ -33,7 +33,7 @@ class _MenuDashboardDokState extends State<MenuDashboardDok> {
   Future<void> _initializeDashboard() async {
     final prefs = await SharedPreferences.getInstance();
     doctorId = prefs.getString('doctorId') ?? "";
-    doctorName = prefs.getString('doctorName') ?? "Dokter";
+    doctorName = prefs.getString('doctorName') ?? "";
 
     await _loadAll();
 
@@ -93,12 +93,9 @@ class _MenuDashboardDokState extends State<MenuDashboardDok> {
     return Scaffold(
       body: Row(
         children: [
-          NavigationSidebarDokpis(
-            currentIndex: 0,
-            context: context,
-          ),
           Expanded(
             child: DashboardDokContent(
+              key: ValueKey(doctorName),
                 doctorName: doctorName,
                 doctorId: doctorId,
                 isLoading: isLoading,
@@ -141,14 +138,54 @@ class _DashboardDokContentState extends State<DashboardDokContent> {
   List<dynamic> todayAppointments = [];
   List<dynamic> allReservations = [];
   bool isLoading = true;
+  String doctorName = "";
+
+  String _formatTanggal(String dateStr) {
+    try {
+      final parts = dateStr.split('/');
+      if (parts.length != 3) return dateStr;
+
+      final day = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final year = int.parse(parts[2]);
+
+      const months = [
+        "Januari",
+        "Februari",
+        "Maret",
+        "April",
+        "Mei",
+        "Juni",
+        "Juli",
+        "Agustus",
+        "September",
+        "Oktober",
+        "November",
+        "Desember"
+      ];
+
+      return "$day ${months[month - 1]} $year";
+    } catch (e) {
+      return dateStr;
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    doctorName = widget.doctorName ?? "";
     _fetchDashboardData();
   }
 
   Future<void> _fetchDashboardData() async {
+    String normalize(String s) {
+      return s
+          .toLowerCase()
+          .replaceAll('.', '')
+          .replaceAll(' ', '')
+          .trim();
+    }
+
     try {
       setState(() {
         isLoading = true;
@@ -158,13 +195,44 @@ class _DashboardDokContentState extends State<DashboardDokContent> {
       await ApiService.getDoctorReservations();
 
       final todayApps = reservationsResponse['todayReservations'] ?? [];
+      final allReservations = reservationsResponse['allReservations'] ?? [];
+
+      final doctor = normalize(widget.doctorName);
+
+      final completedReservations = allReservations.where((res) {
+        final status = (res['status'] ?? '')
+            .toString()
+            .toLowerCase()
+            .trim();
+
+        final pic = normalize(res['pic'] ?? '');
+
+        final isDone = status.contains('selesai'); // 🔥 lebih aman
+
+        return isDone && pic == doctor;
+      }).toList();
+
+      print("WIDGET DOCTOR NAME: ${widget.doctorName}");
+      print("NORMALIZED DOCTOR: ${normalize(widget.doctorName)}");
+
+      final uniquePatients = <String>{};
+
+      for (var res in allReservations) {
+        final key = res['userId']?.toString() ?? res['namaPasien'];
+        uniquePatients.add(key);
+      }
 
       setState(() {
         todayAppointments = todayApps;
-        totalPatients = todayApps.length;
-        totalPractices = todayApps.length;
+        totalPatients = uniquePatients.length;
+        totalPractices = completedReservations.length;
         isLoading = false;
       });
+
+      print("ALL: ${allReservations.length}");
+      print("SELESAI: ${completedReservations.length}");
+      print("UNIQUE PASIEN: ${uniquePatients.length}");
+      print(reservationsResponse.keys);
 
     } catch (e) {
       print('Error fetching dashboard data: $e');
@@ -242,7 +310,6 @@ class _DashboardDokContentState extends State<DashboardDokContent> {
   @override
   Widget build(BuildContext context) {
     final patientHistory = _getPatientHistory();
-    final patientList = patientHistory.values.toList();
 
     return Column(
       children: [
@@ -289,22 +356,6 @@ class _DashboardDokContentState extends State<DashboardDokContent> {
                 const SizedBox(height: 10),
                 _buildTodayAppointments(),
                 const SizedBox(height: 30),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Histori Pasien',
-                      style: TextStyle(
-                        fontFamily: 'Afacad',
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF109E88),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                _buildPasienTable(patientList)
               ],
             ),
           ),
@@ -333,7 +384,7 @@ class _DashboardDokContentState extends State<DashboardDokContent> {
               'Selamat Datang, ${widget.doctorName}!',
               style: TextStyle(
                 fontFamily: 'Afacad',
-                fontSize: 16,
+                fontSize: 18,
                 color: const Color(0xFF109E88),
               ),
             ),
@@ -416,7 +467,7 @@ class _DashboardDokContentState extends State<DashboardDokContent> {
           borderRadius: BorderRadius.circular(10),
           side: BorderSide(
             color: Colors.grey.withOpacity(0.25),
-            width: 1,
+            width: 3,
           ),
         ),
         child: Padding(
@@ -472,7 +523,7 @@ class _DashboardDokContentState extends State<DashboardDokContent> {
       mainAxisSpacing: 10,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 3.8,
+      childAspectRatio: 3.5,
       children: todayAppointments.map((appointment) {
         return _buildAppointmentCard(
           date: appointment['tanggalReservasi'] ?? '',
@@ -499,19 +550,19 @@ class _DashboardDokContentState extends State<DashboardDokContent> {
     required dynamic appointment,
   }) {
     return SizedBox(
-      height: 90,
       child: Card(
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
           side: BorderSide(
             color: Colors.grey.withOpacity(0.25),
-            width: 1,
+            width: 3,
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(12.0),
+          padding: const EdgeInsets.all(18),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
@@ -519,17 +570,17 @@ class _DashboardDokContentState extends State<DashboardDokContent> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Tanggal: $date',
+                      'Tanggal: ${_formatTanggal(date)}',
                       style: TextStyle(
                         fontFamily: 'Afacad',
-                        fontSize: 16,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: const Color(0xFF109E88),
                       ),
                     ),
                   ),
                   Container(
-                    width: 80,
+                    width: 120,
                     height: 30,
                     padding: const EdgeInsets.symmetric(horizontal: 5),
                     decoration: BoxDecoration(
@@ -541,7 +592,7 @@ class _DashboardDokContentState extends State<DashboardDokContent> {
                         type,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 16,
+                          fontSize: 18,
                           fontFamily: 'Afacad',
                           fontWeight: FontWeight.bold,
                         ),
@@ -555,7 +606,8 @@ class _DashboardDokContentState extends State<DashboardDokContent> {
                 "Jam: $time",
                 style: TextStyle(
                   fontFamily: 'Afacad',
-                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
                   color: const Color(0xFF109E88),
                 ),
               ),
@@ -569,17 +621,17 @@ class _DashboardDokContentState extends State<DashboardDokContent> {
                         "Pasien : ",
                         style: TextStyle(
                           fontFamily: 'Afacad',
-                          fontSize: 16,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: const Color(0xFF109E88),
                         ),
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        "$patientName / $patientAge",
+                        "$patientName / $patientAge tahun",
                         style: TextStyle(
                           fontFamily: 'Afacad',
-                          fontSize: 16,
+                          fontSize: 18,
                           color: const Color(0xFF109E88),
                         ),
                       ),
@@ -604,79 +656,6 @@ class _DashboardDokContentState extends State<DashboardDokContent> {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPasienTable(List<Map<String, dynamic>> patientList) {
-    if (patientList.isEmpty) {
-      return Center(
-        child: Text(
-          'Tidak ada histori pasien',
-          style: TextStyle(
-            fontFamily: 'Afacad',
-            fontSize: 16,
-            color: Colors.grey,
-          ),
-        ),
-      );
-    }
-
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(
-          color: Colors.grey.withOpacity(0.25),
-          width: 1,
-        ),
-      ),
-      color: Colors.white,
-      child: Padding(
-        padding: EdgeInsets.zero,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                child: DataTable(
-                  columnSpacing: 20,
-                  horizontalMargin: 20,
-                  dataRowHeight: 60,
-                  dividerThickness: 1,
-                  border: TableBorder(
-                    horizontalInside: BorderSide(
-                      color: Colors.grey.withOpacity(0.25),
-                      width: 1,
-                    ),
-                    verticalInside: BorderSide(
-                      color: Colors.grey.withOpacity(0.25),
-                      width: 1,
-                    ),
-                  ),
-                  columns: [
-                    _buildDataColumn('No'),
-                    _buildDataColumn('Nama Pasien'),
-                    _buildDataColumn('Total Pertemuan'),
-                    _buildDataColumn('Aksi'),
-                  ],
-                  rows: patientList.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final patient = entry.value;
-
-                    return _buildDataRow(
-                      (index + 1).toString(),
-                      patient['name'] ?? 'Unknown',
-                      patient['meetingCount']?.toString() ?? '0',
-                      patient,
-                    );
-                  }).toList(),
-                ),
-              ),
-            );
-          },
         ),
       ),
     );
@@ -794,9 +773,9 @@ class _DashboardDokContentState extends State<DashboardDokContent> {
 
   Color _getTypeColor(String type) {
     switch (type) {
-      case 'OFFLINE':
+      case 'MEDIS':
         return const Color(0xFFFF8000);
-      case 'ONLINE':
+      case 'KONSULTASI':
         return const Color(0xFF59EDAF);
       case 'NON_MEDIS':
         return const Color(0xFFF7D915);

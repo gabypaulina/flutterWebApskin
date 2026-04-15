@@ -4,7 +4,12 @@ import '../../navigasi/navigasi_sidebar_dokpis.dart';
 import '../../services/api_service.dart';
 
 class MenuLaporanDok extends StatefulWidget {
-  const MenuLaporanDok({Key? key}) : super(key: key);
+  final Function(Map<String, dynamic>) onOpenDetail;
+
+  const MenuLaporanDok({
+    Key? key,
+    required this.onOpenDetail,
+  }) : super(key: key);
 
   @override
   _MenuLaporanState createState() => _MenuLaporanState();
@@ -16,12 +21,10 @@ class _MenuLaporanState extends State<MenuLaporanDok> {
     return Scaffold(
       body: Row(
         children: [
-          NavigationSidebarDokpis(
-            currentIndex: 2,
-            context: context,
-          ),
           Expanded(
-            child: LaporanDokContent(),
+            child: LaporanDokContent(
+              onOpenDetail: widget.onOpenDetail,
+            ),
           ),
         ],
       ),
@@ -30,7 +33,12 @@ class _MenuLaporanState extends State<MenuLaporanDok> {
 }
 
 class LaporanDokContent extends StatefulWidget{
-  const LaporanDokContent({Key? key}) : super(key: key);
+  final Function(Map<String, dynamic>) onOpenDetail;
+
+  const LaporanDokContent({
+    Key? key,
+    required this.onOpenDetail,
+  }) : super(key: key);
 
   @override
   _LaporanDokContentState createState() => _LaporanDokContentState();
@@ -219,7 +227,7 @@ class _LaporanDokContentState extends State<LaporanDokContent> {
               'Selamat Datang, Dokter!',
               style: TextStyle(
                 fontFamily: 'Afacad',
-                fontSize: 16,
+                fontSize: 18,
                 color: const Color(0xFF109E88),
               ),
             ),
@@ -251,13 +259,13 @@ class _LaporanDokContentState extends State<LaporanDokContent> {
                 hintStyle: TextStyle(
                   color: Color(0xFF109E88),
                   fontFamily: 'Afacad',
-                  fontSize: 16,
+                  fontSize: 18,
                 ),
                 border: InputBorder.none,
                 icon: Icon(Icons.search, color: Color(0xFF109E88), size: 20),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                  icon: Icon(Icons.clear, color: Color(0xFF109E88), size: 18),
+                  icon: Icon(Icons.clear, color: Color(0xFF109E88), size: 20),
                   onPressed: () {
                     _searchController.clear();
                   },
@@ -266,7 +274,7 @@ class _LaporanDokContentState extends State<LaporanDokContent> {
               ),
               style: TextStyle(
                 fontFamily: 'Afacad',
-                fontSize: 16,
+                fontSize: 18,
               ),
               onChanged: (value) {
                 setState(() {
@@ -302,7 +310,7 @@ class _LaporanDokContentState extends State<LaporanDokContent> {
                 style: TextStyle(
                   color: Color(0xFF109E88),
                   fontFamily: 'Afacad',
-                  fontSize: 16,
+                  fontSize: 18,
                 ),
                 onChanged: (String? newValue) {
                   setState(() {
@@ -341,7 +349,7 @@ class _LaporanDokContentState extends State<LaporanDokContent> {
                 isExpanded: true,
                 icon: Icon(Icons.arrow_drop_down, color: Color(0xFF109E88)),
                 iconSize: 24,
-                elevation: 16,
+                elevation: 18,
                 style: TextStyle(
                   color: Color(0xFF109E88),
                   fontFamily: 'Afacad',
@@ -370,7 +378,7 @@ class _LaporanDokContentState extends State<LaporanDokContent> {
         ElevatedButton(
           onPressed: _resetFilter,
           style: ElevatedButton.styleFrom(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
               side: BorderSide(
@@ -384,7 +392,7 @@ class _LaporanDokContentState extends State<LaporanDokContent> {
             style: TextStyle(
               color: Color(0xFF109E88),
               fontFamily: 'Afacad',
-              fontSize: 16,
+              fontSize: 18,
             ),
           ),
         ),
@@ -398,10 +406,11 @@ class _LaporanDokContentState extends State<LaporanDokContent> {
     }
     return Card(
       elevation: 0,
+      clipBehavior: Clip.antiAlias, // 👈 INI PENTING
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(30),
         side: BorderSide(
-          color: Colors.grey.withOpacity(0.25),
+          color: Colors.black,
           width: 1,
         ),
       ),
@@ -420,21 +429,22 @@ class _LaporanDokContentState extends State<LaporanDokContent> {
                   dataRowHeight: 75,
                   dividerThickness: 1,
                   border: TableBorder(
+                    borderRadius: BorderRadius.circular(30),
                     horizontalInside: BorderSide(
-                      color: Colors.grey.withOpacity(0.25),
+                      color: Colors.black,
                       width: 1,
                     ),
                     verticalInside: BorderSide(
-                      color: Colors.grey.withOpacity(0.25),
+                      color: Colors.black,
                       width: 1,
                     ),
                   ),
                   columns: [
                     _buildDataColumn('ID'),
-                    _buildDataColumn('Nama Pasien'),
-                    _buildDataColumn('Umur'),
-                    _buildDataColumn('Tanggal Reservasi'),
-                    _buildDataColumn('Lihat Detail'),
+                    _buildDataColumn('NAMA PASIEN'),
+                    _buildDataColumn('UMUR'),
+                    _buildDataColumn('TANGGAL RESERVASI'),
+                    _buildDataColumn('LIHAT DETAIL'),
                   ],
                   rows: _filteredPatients.map((patient) {
                     return _buildDataRow(
@@ -454,6 +464,7 @@ class _LaporanDokContentState extends State<LaporanDokContent> {
     return DataColumn(
       label: Expanded(
         child: Container(
+          color: Color(0xFF109E88),
           padding: EdgeInsets.symmetric(vertical: 8),
           alignment: Alignment.center,
           child: Text(
@@ -461,8 +472,8 @@ class _LaporanDokContentState extends State<LaporanDokContent> {
             style: TextStyle(
               fontFamily: 'Afacad',
               fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: const Color(0xFF109E88),
+              fontSize: 18,
+              color: Colors.white,
             ),
           ),
         ),
@@ -488,13 +499,7 @@ class _LaporanDokContentState extends State<LaporanDokContent> {
                   size: 24,
                 ),
                 onPressed: () {
-                  // Fungsi untuk melihat detail pasien
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => HasilKonsultasi(data: patient['raw']),
-                    ),
-                  );
+                  widget.onOpenDetail(patient['raw']);
                 },
               ),
             )
@@ -512,8 +517,8 @@ class _LaporanDokContentState extends State<LaporanDokContent> {
           text,
           style: TextStyle(
             fontFamily: 'Afacad',
-            fontSize: 16,
-            color: const Color(0xFF109E88),
+            fontSize: 18,
+            color: Colors.black,
           ),
         ),
       ),

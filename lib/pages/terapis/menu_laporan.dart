@@ -394,10 +394,11 @@ class _LaporanTerapisContentState extends State<LaporanTerapisContent> {
   Widget _buildPatientsTable() {
     return Card(
       elevation: 0,
+      clipBehavior: Clip.antiAlias, // 👈 INI PENTING
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
         side: BorderSide(
-          color: Colors.grey.withOpacity(0.25),
+          color: Colors.black,
           width: 1,
         ),
       ),
@@ -416,22 +417,23 @@ class _LaporanTerapisContentState extends State<LaporanTerapisContent> {
                   dataRowHeight: 75,
                   dividerThickness: 1,
                   border: TableBorder(
+                    borderRadius: BorderRadius.circular(30),
                     horizontalInside: BorderSide(
-                      color: Colors.grey.withOpacity(0.25),
+                      color: Colors.black,
                       width: 1,
                     ),
                     verticalInside: BorderSide(
-                      color: Colors.grey.withOpacity(0.25),
+                      color: Colors.black,
                       width: 1,
                     ),
                   ),
                   columns: [
                     _buildDataColumn('ID'),
-                    _buildDataColumn('Nama Pasien'),
-                    _buildDataColumn('Tanggal Reservasi'),
-                    _buildDataColumn('Jam Reservasi'),
-                    _buildDataColumn('Treatment'),
-                    _buildDataColumn('Selengkapnya'),
+                    _buildDataColumn('NAMA PASIEN'),
+                    _buildDataColumn('TANGGAL RESERVASI'),
+                    _buildDataColumn('JAM RESERVASI'),
+                    _buildDataColumn('TREATMENT'),
+                    _buildDataColumn('LIHAT DETAIL'),
                   ],
                   rows: _filteredPatients.map((patient) {
                     return _buildDataRow(
@@ -451,6 +453,7 @@ class _LaporanTerapisContentState extends State<LaporanTerapisContent> {
     return DataColumn(
       label: Expanded(
         child: Container(
+          color: Color(0xFF109E88),
           padding: EdgeInsets.symmetric(vertical: 8),
           alignment: Alignment.center,
           child: Text(
@@ -458,8 +461,8 @@ class _LaporanTerapisContentState extends State<LaporanTerapisContent> {
             style: TextStyle(
               fontFamily: 'Afacad',
               fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: const Color(0xFF109E88),
+              fontSize: 18,
+              color: Colors.white,
             ),
           ),
         ),

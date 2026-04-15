@@ -216,7 +216,7 @@ class _JadwalContentState extends State<JadwalContent> {
         crossAxisCount: 3,
         crossAxisSpacing: 20,
         mainAxisSpacing: 20,
-        childAspectRatio: 0.8,
+        childAspectRatio: 1.4,
       ),
       itemCount: _doctors.length,
       itemBuilder: (context, index) {
@@ -232,25 +232,30 @@ class _JadwalContentState extends State<JadwalContent> {
     final String? imageUrl = doctor['foto'];
     final String doctorId = doctor['_id'] ?? '';
 
-    return Container(
-      height: 100,
+    return SizedBox(
+      height: 320,
       child:  Card(
-        elevation: 4,
+        elevation: 10,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(15),
+          side: BorderSide(
+            color: Color(0xFF109E88), // warna border
+            width: 1.5,
+          ),
         ),
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(15),
-            color: Colors.white,
+            color: Colors.white
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Foto Dokter
               Container(
-                width: 120,
-                height: 120,
+                width: 100,
+                height: 100,
                 margin: EdgeInsets.only(top: 20),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
@@ -328,6 +333,7 @@ class _JadwalContentState extends State<JadwalContent> {
                   ),
                 ),
               ),
+              SizedBox(height: 10)
             ],
           ),
         ),

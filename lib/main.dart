@@ -15,31 +15,21 @@ import 'package:apskina/pages/terapis/detail_appointment_nonmedis.dart';
 import 'package:apskina/pages/terapis/menu_dashboard.dart';
 import 'package:apskina/pages/terapis/menu_jadwal.dart';
 import 'package:apskina/pages/terapis/menu_laporan.dart';
-import 'package:apskina/pages/user/detail_artikel.dart';
-import 'package:apskina/pages/user/detail_reservasi.dart';
-import 'package:apskina/pages/user/detail_transaksi.dart';
-import 'package:apskina/pages/user/halaman_artikel.dart';
-import 'package:apskina/pages/user/halaman_histori.dart';
-import 'package:apskina/pages/user/halaman_reservasi.dart';
-import 'package:apskina/pages/user/halaman_treatment.dart';
-import 'package:apskina/pages/user/tambah_skincare.dart';
 import 'package:apskina/services/firebase_service.dart';
 import 'package:apskina/wrappers/auth_wrapper.dart';
 // import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 // import 'package:apskina/pages/user/halaman_start.dart';
 import 'package:apskina/pages/user/halaman_login.dart';
-import 'package:apskina/pages/user/halaman_register.dart';
-import 'package:apskina/pages/user/halaman_qna.dart';
-import 'package:apskina/pages/user/halaman_home.dart';
-import 'package:apskina/pages/user/halaman_profile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:apskina/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('id_ID', null);
   // await Firebase.initializeApp();
 
   runApp(
@@ -68,32 +58,32 @@ class MyApp extends StatelessWidget {
       ),
       home:  const AuthWrapper(),
       routes: {
-        '/register' : (context) => HalamanRegister(),
+        // '/register' : (context) => HalamanRegister(),
         '/login' : (context) => HalamanLogin(),
 
         // ROUTE USER
-        '/qna': (context) {
-          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-          return HalamanQna(
-            isMandatory: args?['isMandatory'] ?? true,
-          );
-        },
-        '/home' : (context) => HalamanHome(),
-        '/artikel' : (context) => HalamanArtikel(),
-        '/detail-artikel': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-          return DetailArtikel(
-            articleId: args['articleId'],
-          );
-        },
-        '/profile' : (context) => HalamanProfile(),
-        '/reservasi' : (context) => HalamanReservasi(),
-        '/histori' : (context) => HalamanHistori(),
-        '/treatment' : (context) => HalamanTreatment(),
-        '/detail_reservasi': (context) => DetailReservasi(
-          reservation: ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>,
-        ),
-        '/tambah_skincare' : (context) => HalamanTambahSkincare(),
+        // '/qna': (context) {
+        //   final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+        //   return HalamanQna(
+        //     isMandatory: args?['isMandatory'] ?? true,
+        //   );
+        // },
+        // '/home' : (context) => HalamanHome(),
+        // '/artikel' : (context) => HalamanArtikel(),
+        // '/detail-artikel': (context) {
+        //   final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+        //   return DetailArtikel(
+        //     articleId: args['articleId'],
+        //   );
+        // },
+        // '/profile' : (context) => HalamanProfile(),
+        // '/reservasi' : (context) => HalamanReservasi(),
+        // '/histori' : (context) => HalamanHistori(),
+        // '/treatment' : (context) => HalamanTreatment(),
+        // '/detail_reservasi': (context) => DetailReservasi(
+        //   reservation: ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>,
+        // ),
+        // '/tambah_skincare' : (context) => HalamanTambahSkincare(),
 
         // ROUTE ADMIN
         '/admin/dashboard' : (context) => MenuDashboard(),
@@ -107,7 +97,7 @@ class MyApp extends StatelessWidget {
         // ROUTE DOKTER
         '/dokter/dashboard' : (context) => MenuDashboardDok(),
         '/dokter/jadwal' : (context) => MenuJadwalDok(),
-        '/dokter/laporan' : (context) => MenuLaporanDok(),
+        // '/dokter/laporan' : (context) => MenuLaporanDok(),
         // '/dokter/catatan_dokter' : (context) => ,
         // '/dokter/resep_digital' : (context) => ,
 

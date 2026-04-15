@@ -24,6 +24,43 @@ class _DetailAppointmentState extends State<DetailAppointment> {
   TextEditingController diagnosisController = TextEditingController();
   TextEditingController noteController = TextEditingController();
 
+  String getKeterangan(int value) {
+    if (value <= 25) return 'Tidak Konsisten';
+    if (value <= 50) return 'Kurang Konsisten';
+    if (value <= 75) return 'Cukup Konsisten';
+    return 'Sangat Konsisten';
+  }
+
+  String _formatTanggal(String dateStr) {
+    try {
+      final parts = dateStr.split('/');
+      if (parts.length != 3) return dateStr;
+
+      final day = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final year = int.parse(parts[2]);
+
+      const months = [
+        "Januari",
+        "Februari",
+        "Maret",
+        "April",
+        "Mei",
+        "Juni",
+        "Juli",
+        "Agustus",
+        "September",
+        "Oktober",
+        "November",
+        "Desember"
+      ];
+
+      return "$day ${months[month - 1]} $year";
+    } catch (e) {
+      return dateStr;
+    }
+  }
+
   Map<String, dynamic>? getAnswerByQuestionId(int questionId) {
     final qna = widget.reservation['qna'];
     if (qna == null) return null;
@@ -58,15 +95,24 @@ class _DetailAppointmentState extends State<DetailAppointment> {
 
         final tipe = widget.reservation['tipe']?.toString().toLowerCase();
 
-        if(tipe == 'KONSULTASI') {
-          Navigator.push(
+        if(tipe == 'konsultasi') {
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (context) => RuangKonsultasiDokter(
-                    reservation: widget.reservation,
-                ),
+              builder: (context) => RuangKonsultasiDokter(
+                reservation: widget.reservation,
+              ),
             ),
           );
+
+          // 🔥 TAMBAHAN
+          if (result == true) {
+            setState(() {
+              widget.reservation['status'] = 'selesai';
+              isCompleted = true;
+              isConsultationStarted = false;
+            });
+          }
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -126,14 +172,12 @@ class _DetailAppointmentState extends State<DetailAppointment> {
     final minuman = getAnswerByQuestionId(8);
     final tidur = getAnswerByQuestionId(9);
     final gangguanTidur = getAnswerByQuestionId(10);
+    final avg = int.tryParse(widget.reservation['laporanRutinitasAvg']?.toString() ?? '0') ?? 0;
 
+    print("STATUS UI: ${widget.reservation['status']}");
     return Scaffold(
       body: Row(
         children: [
-          NavigationSidebarDokpis(
-            currentIndex: 1,
-            context: context,
-          ),
           Expanded(
             child: Column(
               children: [
@@ -199,10 +243,10 @@ class _DetailAppointmentState extends State<DetailAppointment> {
                                           ),
                                           const SizedBox(width: 20),
                                           Text(
-                                            widget.reservation['tanggalReservasi'] ?? '-',
+                                            _formatTanggal(widget.reservation['tanggalReservasi'] ?? '-'),
                                             style: TextStyle(
                                               fontFamily: 'Afacad',
-                                              fontSize: 16,
+                                              fontSize: 18,
                                               fontWeight: FontWeight.bold,
                                               color: const Color(0xFF109E88),
                                             ),
@@ -223,7 +267,7 @@ class _DetailAppointmentState extends State<DetailAppointment> {
                                             widget.reservation['jamReservasi'] ?? '-',
                                             style: TextStyle(
                                               fontFamily: 'Afacad',
-                                              fontSize: 16,
+                                              fontSize: 18,
                                               fontWeight: FontWeight.bold,
                                               color: const Color(0xFF109E88),
                                             ),
@@ -237,14 +281,24 @@ class _DetailAppointmentState extends State<DetailAppointment> {
                                       SizedBox(
                                         width: 200,
                                         child: ElevatedButton(
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: const Color(0xFF109E88),
-                                            padding: EdgeInsets.symmetric(vertical: 16),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(8),
+                                          style: ButtonStyle(
+                                            backgroundColor: MaterialStateProperty.all(
+                                              widget.reservation['status'] == 'selesai'
+                                                  ? Colors.grey[800]
+                                                  : Color(0xFF109E88),
+                                            ),
+                                            shape: MaterialStateProperty.all(
+                                              RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(16),
+                                              ),
+                                            ),
+                                            padding: MaterialStateProperty.all(
+                                              EdgeInsets.symmetric(vertical: 16),
                                             ),
                                           ),
-                                          onPressed: _isLoading ? null : _startConsultation,
+                                          onPressed: _isLoading || widget.reservation['status'] == 'selesai'
+                                              ? null
+                                              : _startConsultation,
                                           child: _isLoading
                                               ? CircularProgressIndicator(color: Colors.white)
                                               : Text(
@@ -252,7 +306,7 @@ class _DetailAppointmentState extends State<DetailAppointment> {
                                                   style: TextStyle(
                                                     color: Colors.white,
                                                     fontFamily: 'Afacad',
-                                                    fontSize: 16,
+                                                    fontSize: 18,
                                                     fontWeight: FontWeight.bold,
                                                   ),
                                                 ),
@@ -262,7 +316,7 @@ class _DetailAppointmentState extends State<DetailAppointment> {
                                       Text(
                                         _getStatusDescription(widget.reservation['status']),
                                         style: TextStyle(
-                                          fontSize: 14,
+                                          fontSize: 16,
                                           fontFamily: 'Afacad',
                                           color: Colors.grey,
                                         ),
@@ -280,17 +334,17 @@ class _DetailAppointmentState extends State<DetailAppointment> {
                                     'Pertemuan ke : ',
                                     style: TextStyle(
                                       fontFamily: 'Afacad',
-                                      fontSize: 16,
+                                      fontSize: 18,
                                       fontWeight: FontWeight.bold,
                                       color: const Color(0xFF109E88),
                                     ),
                                   ),
                                   const SizedBox(width: 20),
                                   Text(
-                                    '1',
+                                    '${widget.reservation['pertemuan'] ?? '-'}',
                                     style: TextStyle(
                                       fontFamily: 'Afacad',
-                                      fontSize: 16,
+                                      fontSize: 18,
                                       color: const Color(0xFF109E88),
                                     ),
                                   ),
@@ -305,7 +359,7 @@ class _DetailAppointmentState extends State<DetailAppointment> {
                                     'Pasien : ',
                                     style: TextStyle(
                                       fontFamily: 'Afacad',
-                                      fontSize: 16,
+                                      fontSize: 18,
                                       fontWeight: FontWeight.bold,
                                       color: const Color(0xFF109E88),
                                     ),
@@ -315,7 +369,7 @@ class _DetailAppointmentState extends State<DetailAppointment> {
                                     '${widget.reservation['namaPasien'] ?? '-'} / ${widget.reservation['age'] ?? '-'} tahun',
                                     style: TextStyle(
                                       fontFamily: 'Afacad',
-                                      fontSize: 16,
+                                      fontSize: 18,
                                       color: const Color(0xFF109E88),
                                     ),
                                   ),
@@ -330,7 +384,7 @@ class _DetailAppointmentState extends State<DetailAppointment> {
                                     'Tipe : ',
                                     style: TextStyle(
                                       fontFamily: 'Afacad',
-                                      fontSize: 16,
+                                      fontSize: 18,
                                       fontWeight: FontWeight.bold,
                                       color: const Color(0xFF109E88),
                                     ),
@@ -340,7 +394,7 @@ class _DetailAppointmentState extends State<DetailAppointment> {
                                     widget.reservation['tipe'] ?? '-',
                                     style: TextStyle(
                                       fontFamily: 'Afacad',
-                                      fontSize: 16,
+                                      fontSize: 18,
                                       color: const Color(0xFF109E88),
                                     ),
                                   ),
@@ -355,17 +409,17 @@ class _DetailAppointmentState extends State<DetailAppointment> {
                                     'Laporan Rutinitas Skincare : ',
                                     style: TextStyle(
                                       fontFamily: 'Afacad',
-                                      fontSize: 16,
+                                      fontSize: 18,
                                       fontWeight: FontWeight.bold,
                                       color: const Color(0xFF109E88),
                                     ),
                                   ),
                                   const SizedBox(width: 20),
                                   Text(
-                                    widget.reservation['laporanRutinitas'] ?? '-', // '80% - Sangat Rutin',
+                                    '$avg% - ${getKeterangan(avg)}',
                                     style: TextStyle(
                                       fontFamily: 'Afacad',
-                                      fontSize: 16,
+                                      fontSize: 18,
                                       color: const Color(0xFF109E88),
                                     ),
                                   ),
@@ -385,7 +439,7 @@ class _DetailAppointmentState extends State<DetailAppointment> {
                                               'Produk Skincare Yang Digunakan : ',
                                               style: TextStyle(
                                                 fontFamily: 'Afacad',
-                                                fontSize: 16,
+                                                fontSize: 18,
                                                 fontWeight: FontWeight.bold,
                                                 color: const Color(0xFF109E88),
                                               ),
@@ -400,7 +454,7 @@ class _DetailAppointmentState extends State<DetailAppointment> {
                                   const SizedBox(width: 20),
 
                                   Expanded(
-                                    flex: 2,
+                                    flex: 1,
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
@@ -408,7 +462,7 @@ class _DetailAppointmentState extends State<DetailAppointment> {
                                           'Data Tipe Kulit : ',
                                           style: TextStyle(
                                             fontFamily: 'Afacad',
-                                            fontSize: 16,
+                                            fontSize: 18,
                                             fontWeight: FontWeight.bold,
                                             color: const Color(0xFF109E88),
                                           ),
@@ -619,34 +673,39 @@ class _DetailAppointmentState extends State<DetailAppointment> {
       return Text("Tidak ada data skincare");
     }
 
-    return Table(
-      border: TableBorder.all(
-        color: Colors.grey.withOpacity(0.25),
-        width: 1,
-        borderRadius: BorderRadius.circular(10)
-      ),
-      defaultColumnWidth: const IntrinsicColumnWidth(),
-      children: [
-        TableRow(
-          children: [
+    return SizedBox(
+      width: double.infinity,
+      child: Table(
+        border: TableBorder.all(
+          color: Colors.grey.withOpacity(0.5),
+          width: 2,
+          borderRadius: BorderRadius.circular(10)
+        ),
+        columnWidths: const {
+          0: FixedColumnWidth(120),
+          1: FlexColumnWidth(),
+        },
+        children: [
+          TableRow(
+            children: [
             _buildTableHeaderCell('JENIS'),
             _buildTableHeaderCell('PRODUK'),
-          ],
-        ),
-        ...products.map((product) {
-          return TableRow(
-            children: [
-              _buildTableCell(product['productType'] ?? '-'),
-              _buildProductCell(
-                product: product['name'] ?? '-',
-                ingredients: (product['productIngredients'] as List<dynamic>?)
-                    ?.join(', ') ?? '-',
-              ),
-              // _buildTableCell(product['name'] ?? '-'),
             ],
-          );
-        }).toList(),
-      ],
+          ),
+          ...products.map((product) {
+            return TableRow(
+              children: [
+                _buildTableCell(product['productType'] ?? '-'),
+                _buildProductCell(
+                  product: product['name'] ?? '-',
+                  ingredients: (product['productIngredients'] as List<dynamic>?)
+                  ?.join(', ') ?? '-',
+                ),
+              ],
+            );
+          }).toList(),
+        ],
+      ),
     );
   }
 
@@ -658,7 +717,7 @@ class _DetailAppointmentState extends State<DetailAppointment> {
             text,
             style: TextStyle(
               fontFamily: 'Afacad',
-              fontSize: 14,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
               color: const Color(0xFF109E88),
             ),
@@ -675,7 +734,7 @@ class _DetailAppointmentState extends State<DetailAppointment> {
             text,
             style: TextStyle(
               fontFamily: 'Afacad',
-              fontSize: 14,
+              fontSize: 16,
               color: const Color(0xFF109E88),
             ),
           ),
@@ -747,7 +806,7 @@ class _DetailAppointmentState extends State<DetailAppointment> {
               product,
               style: TextStyle(
                 fontFamily: 'Afacad',
-                fontSize: 14,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: const Color(0xFF109E88),
               ),
@@ -759,7 +818,7 @@ class _DetailAppointmentState extends State<DetailAppointment> {
               '( $ingredients )',
               style: TextStyle(
                 fontFamily: 'Afacad',
-                fontSize: 12,
+                fontSize: 14,
                 fontStyle: FontStyle.italic,
                 color: const Color(0xFF109E88).withOpacity(0.8),
               ),
@@ -774,16 +833,20 @@ class _DetailAppointmentState extends State<DetailAppointment> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 20),
-        Text("Form Konsultasi", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-
         const SizedBox(height: 10),
 
         // 🔥 TREATMENT
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text("Treatment"),
+            Text("Treatment Yang Diambil",
+              style: TextStyle(
+                fontFamily: 'Afacad',
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF109E88),
+              ),
+            ),
             IconButton(
               icon: Icon(Icons.add),
               onPressed: () {
@@ -802,7 +865,6 @@ class _DetailAppointmentState extends State<DetailAppointment> {
               child: TextField(
                 controller: treatmentControllers[index],
                 decoration: InputDecoration(
-                  labelText: "Treatment ${index + 1}",
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -812,23 +874,38 @@ class _DetailAppointmentState extends State<DetailAppointment> {
 
         const SizedBox(height: 15),
 
+        Text("Diagnosis",
+          style: TextStyle(
+            fontFamily: 'Afacad',
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF109E88),
+          ),
+        ),
+        const SizedBox(height: 8),
         // 🔥 DIAGNOSIS
         TextField(
           controller: diagnosisController,
           decoration: InputDecoration(
-            labelText: "Diagnosis",
             border: OutlineInputBorder(),
           ),
         ),
 
         const SizedBox(height: 15),
 
+        Text("Catatan Dokter",
+          style: TextStyle(
+            fontFamily: 'Afacad',
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF109E88),
+          ),
+        ),
         // 🔥 CATATAN
         TextField(
           controller: noteController,
-          maxLines: 3,
+          maxLines: 4,
           decoration: InputDecoration(
-            labelText: "Catatan Dokter",
             border: OutlineInputBorder(),
           ),
         ),
@@ -837,10 +914,36 @@ class _DetailAppointmentState extends State<DetailAppointment> {
 
         // 🔥 BUTTON SELESAI
         SizedBox(
-          width: double.infinity,
+          width: 200,
           child: ElevatedButton(
+            style: ButtonStyle(
+              // backgroundColor: MaterialStateProperty.all(
+              //   widget.reservation['status'] == 'selesai'
+              //       ? Colors.grey[800]
+              //       : Color(0xFF109E88),
+              // ),
+              backgroundColor: MaterialStateProperty.all(
+                  Color(0xFF109E88)
+              ),
+              shape: MaterialStateProperty.all(
+                RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              padding: MaterialStateProperty.all(
+                EdgeInsets.symmetric(vertical: 16),
+              ),
+            ),
             onPressed: _finishConsultation,
-            child: Text("Selesaikan Sesi"),
+            child: Text(
+              "Selesaikan Sesi",
+              style: TextStyle(
+                color: Colors.white,
+                fontFamily: 'Afacad',
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ),
       ],

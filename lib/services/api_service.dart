@@ -11,8 +11,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../pages/admin/menu_iklan.dart'; // Untuk SocketException
 
 class ApiService {
-  static const String baseUrl = 'https://backendapskin-production.up.railway.app/api';
-  static const String basedUrl = 'https://backendapskin-production.up.railway.app';
+  // static const String baseUrl = 'https://backendapskin-production.up.railway.app/api';
+  // static const String basedUrl = 'https://backendapskin-production.up.railway.app';
+
+  static const String baseUrl = 'http://192.168.0.4:3000/api';
+  static const String basedUrl = 'http://192.168.0.4:3000';
 
   // Helper method for making POST requests
   static Future<Map<String, dynamic>> postRequest(
@@ -545,16 +548,154 @@ class ApiService {
           'Authorization': 'Bearer $token',
         },
       );
-
+      print("DOCTOR PREFS RAW: ${prefs.getString('doctorName')}");
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
+
       } else {
         throw Exception('Gagal mengambil reservasi dokter');
       }
     }catch (e) {
       throw Exception('Error : ${e.toString()}');
     }
+  }
 
+  // SISTEM KIRIM MESSAGE
+  static Future<void> sendSystemMessage({
+    required String reservationId,
+    required String type,
+    required String text,
+    required String timestamp,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/chat/system'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'reservationId': reservationId,
+          'type': type,
+          'text': text,
+          'timestamp': timestamp,
+        }),
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Failed to send system message');
+      }
+    } catch (e) {
+      print('sendSystemMessage error: $e');
+    }
+  }
+
+  // TAMBAH RESEP
+  static Future<bool> sendResep({
+    required String reservationId,
+    required String namaObat,
+    required String dosis,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/reservasi/$reservationId/resep'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'namaObat': namaObat,
+          'dosis': dosis,
+        }),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error sendResep: $e');
+      return false;
+    }
+  }
+
+  // UPDATE RESEP
+  static Future<void> updateResep({
+    required String reservationId,
+    required List<Map<String, String>> resep,
+  }) async {
+    final url = Uri.parse('$baseUrl/reservasi/$reservationId/resep');
+
+    final response = await http.put(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'resep': resep,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Gagal update resep');
+    }
+  }
+
+  // TAMBAH CATATAN DOKTER
+  static Future<bool> sendCatatan({
+    required String reservationId,
+    required String diagnosis,
+    required String note,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/reservasi/$reservationId/catatan'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'diagnosis': diagnosis,
+          'catatanDokter': note,
+        }),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error sendCatatan: $e');
+      return false;
+    }
+  }
+
+  // UPDATE CATATAN DOKTER
+  static Future<void> updateCatatan({
+    required String reservationId,
+    required String diagnosis,
+    required String note,
+  }) async {
+    final url = Uri.parse('$baseUrl/reservasi/$reservationId/catatan');
+
+    final response = await http.put(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'reservationId': reservationId,
+        'diagnosis': diagnosis,
+        'note': note,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Gagal update catatan');
+    }
   }
 
   // GET RESERVASI BY TERAPIS
@@ -1556,49 +1697,42 @@ class ApiService {
       );
 
       request.headers['Authorization'] = 'Bearer $token';
+      if (token == null) {
+        throw Exception('Token tidak ditemukan. Silakan login ulang.');
+      }
       request.fields['nama'] = nama;
       request.fields['spesialis'] = spesialis;
       request.fields['jadwal'] = jsonEncode(jadwal);
+      request.fields['reservasi'] = jsonEncode([]);
 
       // Handle upload gambar
-      if (foto != null) {
-        if (kIsWeb) {
-          Uint8List bytes;
-          String filename;
+      if (kIsWeb) {
+        Uint8List bytes;
+        String filename;
 
-          if (foto is Uint8List) {
-            bytes = foto;
-            filename = 'dokter_${DateTime.now().millisecondsSinceEpoch}.jpg';
-          } else if (foto is Map<String, dynamic>) {
-            bytes = foto['bytes'] as Uint8List;
-            filename = foto['filename'] ?? 'dokter_${DateTime.now().millisecondsSinceEpoch}.jpg';
-          } else {
-            throw Exception('Format gambar tidak dikenali');
-          }
-
-          request.files.add(http.MultipartFile.fromBytes(
-            'foto',
-            bytes,
-            filename: filename,
-          ));
-        } else {
-          File file = foto;
-          var stream = http.ByteStream(file.openRead());
-          var length = await file.length();
-
-          request.files.add(http.MultipartFile(
-            'foto',
-            stream,
-            length,
-            filename: file.path.split('/').last,
-          ));
+        if (foto is Map) {
+          bytes = foto['bytes'];
+          filename = foto['filename'] ?? 'dokter.jpg';
         }
+        else if (foto is Uint8List) {
+          bytes = foto;
+          filename = 'dokter.jpg';
+        }
+        else {
+          throw Exception('Format gambar tidak dikenali di web');
+        }
+
+        request.files.add(http.MultipartFile.fromBytes(
+          'foto',
+          bytes,
+          filename: filename,
+        ));
       }
 
       var response = await request.send();
       var responseString = await response.stream.bytesToString();
 
-      if (response.statusCode == 201) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         return jsonDecode(responseString);
       } else {
         throw Exception('Upload gagal: ${response.statusCode} - $responseString');
@@ -1830,6 +1964,28 @@ class ApiService {
     } catch (e) {
       print('Error getting notifications: $e');
       throw Exception('Error getting notifications: ${e.toString()}');
+    }
+  }
+
+  // NOTIFIKASI IKLAN
+  static Future<void> sendNotificationToAllUsers({
+    required String title,
+    required String body,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$basedUrl/send-to-all'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'title': title,
+        'body': body,
+      }),
+    );
+
+    print("STATUS: ${response.statusCode}");
+    print("BODY: ${response.body}");
+
+    if (response.statusCode != 200) {
+      throw Exception('Gagal kirim notifikasi');
     }
   }
 

@@ -1,8 +1,8 @@
-import 'package:apskina/pages/dokter/menu_dashboard.dart';
+import 'package:apskina/pages/dokter/main_page.dart';
 import 'package:apskina/pages/terapis/menu_dashboard.dart';
-import 'package:apskina/pages/user/halaman_home.dart';
+// import 'package:apskina/pages/user/halaman_home.dart';
 import 'package:apskina/pages/user/halaman_login.dart';
-import 'package:apskina/pages/user/halaman_qna.dart';
+// import 'package:apskina/pages/user/halaman_qna.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:convert';
@@ -51,11 +51,11 @@ class _AuthWrapperState extends State<AuthWrapper> {
         }else if (auth.isAdmin){
           return const MenuDashboard();
         }else if (auth.isDokter){
-          return const MenuDashboardDok();
+          return DoctorMainPage();
         }else if (auth.isTerapis){
           return const MenuDashboardTerapis();
         }else {
-          return auth.hasCompletedQna ? HalamanHome() : const HalamanQna(isMandatory: true);
+          return HalamanLogin();
         }
       }
     );

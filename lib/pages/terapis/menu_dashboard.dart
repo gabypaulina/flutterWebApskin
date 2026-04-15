@@ -150,11 +150,32 @@ class _DashboardTerapisContentState extends State<DashboardTerapisContent> {
       await ApiService.getTerapisReservations();
 
       final todayApps = reservationsResponse['todayReservations'] ?? [];
+      final allReservations = reservationsResponse['allReservations'] ?? [];
+
+      final completedReservations = allReservations.where((res) {
+        final status = (res['status'] ?? '')
+            .toString()
+            .toLowerCase()
+            .trim();
+
+        final pic = res['pic'] ?? '';
+
+        final isDone = status.contains('selesai');
+
+        return isDone && pic == pic;
+      }).toList();
+
+      final uniquePatients = <String>{};
+
+      for (var res in allReservations) {
+        final key = res['userId']?.toString() ?? res['namaPasien'];
+        uniquePatients.add(key);
+      }
 
       setState(() {
         todayAppointments = todayApps;
-        totalPasien = todayApps.length;
-        totalPraktek = todayApps.length;
+        totalPasien = uniquePatients.length;
+        totalPraktek = completedReservations.length;
         isLoading = false;
       });
     } catch (e) {

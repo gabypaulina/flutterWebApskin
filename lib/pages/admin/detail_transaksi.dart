@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'package:apskina/navigasi/navigasi_sidebar.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../services/api_service.dart';
 
 class DetailTransaksi extends StatefulWidget {
-  const DetailTransaksi({Key? key}) : super(key: key);
+  final Map<String, dynamic> data;
+
+  const DetailTransaksi({Key? key, required this.data}) : super(key: key);
 
   @override
   _DetailTransaksiState createState() => _DetailTransaksiState();
@@ -29,12 +32,12 @@ class _DetailTransaksiState extends State<DetailTransaksi> {
       'price': 250000,
     },
   ];
+  late Map<String, dynamic> trx;
 
-  // Hitung total pembayaran
-  double get totalPayment {
-    return treatments.fold(0, (sum, treatment) {
-      return sum + (treatment['quantity'] * treatment['price']);
-    });
+  @override
+  void initState() {
+    super.initState();
+    trx = widget.data;
   }
 
   // Format currency
@@ -43,6 +46,28 @@ class _DetailTransaksiState extends State<DetailTransaksi> {
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
           (Match m) => '${m[1]}.',
     )}';
+  }
+
+  String formatDateTime(String? date) {
+    if (date == null || date.isEmpty) return '-';
+
+    final dt = DateTime.tryParse(date);
+    if (dt == null) return '-';
+
+    final local = dt.toLocal();
+
+    return DateFormat('dd/MM/yyyy').format(local);
+  }
+
+  String formatTime(String? date) {
+    if (date == null || date.isEmpty) return '-';
+
+    final dt = DateTime.tryParse(date);
+    if (dt == null) return '-';
+
+    final local = dt.toLocal();
+
+    return DateFormat('HH:mm').format(local);
   }
 
   @override
@@ -111,15 +136,6 @@ class _DetailTransaksiState extends State<DetailTransaksi> {
                               child : Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    'TR100404',
-                                    style: TextStyle(
-                                      fontFamily: 'Afacad',
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: const Color(0xFF109E88),
-                                    ),
-                                  ),
                                   const SizedBox(height: 40),
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -138,7 +154,7 @@ class _DetailTransaksiState extends State<DetailTransaksi> {
                                           ),
                                           const SizedBox(width: 20),
                                           Text(
-                                            'Michael Susanto',
+                                            trx['nama'] ?? '-',
                                             style: TextStyle(
                                               fontFamily: 'Afacad',
                                               fontSize: 16,
@@ -161,7 +177,7 @@ class _DetailTransaksiState extends State<DetailTransaksi> {
                                               ),
                                               const SizedBox(width: 20),
                                               Text(
-                                                '10 April 2025',
+                                                formatDateTime(trx['paidAt']),
                                                 style: TextStyle(
                                                   fontFamily: 'Afacad',
                                                   fontSize: 16,
@@ -182,7 +198,7 @@ class _DetailTransaksiState extends State<DetailTransaksi> {
                                               ),
                                               const SizedBox(width: 20),
                                               Text(
-                                                '14:00',
+                                                formatTime(trx['paidAt']),
                                                 style: TextStyle(
                                                   fontFamily: 'Afacad',
                                                   fontSize: 16,
@@ -212,7 +228,7 @@ class _DetailTransaksiState extends State<DetailTransaksi> {
                                       ),
                                       const SizedBox(width: 20),
                                       Text(
-                                        'Non Medis',
+                                        trx['tipe'] ?? '-',
                                         style: TextStyle(
                                           fontFamily: 'Afacad',
                                           fontSize: 16,
@@ -237,7 +253,7 @@ class _DetailTransaksiState extends State<DetailTransaksi> {
                                       ),
                                       const SizedBox(width: 20),
                                       Text(
-                                        'Terapis',
+                                        trx['pic'] ?? '-',
                                         style: TextStyle(
                                           fontFamily: 'Afacad',
                                           fontSize: 16,
@@ -258,63 +274,14 @@ class _DetailTransaksiState extends State<DetailTransaksi> {
                                     ),
                                   ),
                                   const SizedBox(height: 10),
-
-                                  // Daftar treatment yang dinamis
-                                  Column(
-                                    children: List.generate(treatments.length, (index) {
-                                      final treatment = treatments[index];
-                                      return Padding(
-                                        padding: const EdgeInsets.only(bottom: 10.0),
-                                        child: Row(
-                                          children: [
-                                            Text(
-                                              '${index + 1}.',
-                                              style: TextStyle(
-                                                fontFamily: 'Afacad',
-                                                fontSize: 16,
-                                                color: const Color(0xFF109E88),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 20),
-                                            Expanded(
-                                              flex: 3,
-                                              child: Text(
-                                                treatment['name'],
-                                                style: TextStyle(
-                                                  fontFamily: 'Afacad',
-                                                  fontSize: 16,
-                                                  color: const Color(0xFF109E88),
-                                                ),
-                                              ),
-                                            ),
-                                            Expanded(
-                                              flex: 1,
-                                              child: Text(
-                                                treatment['quantity'].toString(),
-                                                style: TextStyle(
-                                                  fontFamily: 'Afacad',
-                                                  fontSize: 16,
-                                                  color: const Color(0xFF109E88),
-                                                ),
-                                                textAlign: TextAlign.center,
-                                              ),
-                                            ),
-                                            Expanded(
-                                              flex: 2,
-                                              child: Text(
-                                                formatCurrency(treatment['price']),
-                                                style: TextStyle(
-                                                  fontFamily: 'Afacad',
-                                                  fontSize: 16,
-                                                  color: const Color(0xFF109E88),
-                                                ),
-                                                textAlign: TextAlign.right,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    }),
+                                  Text(
+                                    trx['treatment'] ?? '-',
+                                    style: TextStyle(
+                                      fontFamily: 'Afacad',
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF109E88),
+                                    ),
                                   ),
 
                                   const SizedBox(height: 20),
@@ -333,32 +300,7 @@ class _DetailTransaksiState extends State<DetailTransaksi> {
                                       ),
                                       const SizedBox(width: 20),
                                       Text(
-                                        formatCurrency(totalPayment.toInt()),
-                                        style: TextStyle(
-                                          fontFamily: 'Afacad',
-                                          fontSize: 16,
-                                          color: const Color(0xFF109E88),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 20),
-
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Metode Pembayaran : ',
-                                        style: TextStyle(
-                                          fontFamily: 'Afacad',
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: const Color(0xFF109E88),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 20),
-                                      Text(
-                                        'Transfer',
+                                        formatCurrency(int.parse(trx['amount'].toString())),
                                         style: TextStyle(
                                           fontFamily: 'Afacad',
                                           fontSize: 16,

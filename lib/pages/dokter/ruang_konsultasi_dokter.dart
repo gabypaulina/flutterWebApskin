@@ -1,11 +1,14 @@
-// pages/dokter/ruang_konsultasi_dokter.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:socket_io_client/socket_io_client.dart';
 import '../../services/api_service.dart';
 import 'package:http/http.dart' as http;
+import '../../services/socket_service.dart';
+import 'buat_catatan_dokter.dart';
+import 'buat_resep_digital.dart';
 
 
 class RuangKonsultasiDokter extends StatefulWidget {
@@ -26,40 +29,72 @@ class _RuangKonsultasiDokterState extends State<RuangKonsultasiDokter> {
   @override
   void initState() {
     super.initState();
-    // _connectWebSocket();
-    _loadChatHistory();
-  }
+    _initializeSocket();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadChatHistory();
+    });  }
 
-  // void _connectWebSocket() async {
-  //   final prefs = await SharedPreferences.getInstance();
-  //   final userData = prefs.getString('userData');
-  //   final userId = userData != null ? jsonDecode(userData)['id'] : 'doctor_${DateTime.now().millisecondsSinceEpoch}';
-  //
-  //   WebSocketService.connect(
-  //     widget.reservation['_id'],
-  //     'doctor',
-  //     userId,
-  //   );
-  //
-  //   WebSocketService.setOnMessageCallback((data) {
-  //     setState(() {
-  //       _messages.add(Message(
-  //         text: data['text'],
-  //         image: data['image'],
-  //         time: DateTime.parse(data['time']),
-  //         isUser: data['isUser'],
-  //       ));
-  //     });
-  //   });
-  //
-  //   setState(() {
-  //     _isConnected = true;
-  //   });
-  // }
+  Future<void> _initializeSocket() async {
+    await SocketService.initializeSocket();
+
+    SocketService.socket?.onConnect((_) {
+      print("JOIN ROOM DOKTER: ${widget.reservation['_id']}");
+      SocketService.joinRoom(widget.reservation['_id']);
+    });
+
+    SocketService.on('receive_message', (data) {
+      if (!mounted) return;
+
+      final newMessage = Message.fromJson(data);
+
+      setState(() {
+        final exists = _messages.any((m) => m.id == newMessage.id);
+        if (!exists) {
+          _messages.add(newMessage);
+        }
+      });
+    });
+
+    SocketService.on('receive_image', (data) {
+      if (mounted) {
+        setState(() {
+          // _messages.insert(0, Message.fromJson(data));
+          _messages.add(Message.fromJson(data));
+        });
+      }
+    });
+
+    SocketService.socket?.on("session_finished", (data) {
+      if (!mounted) return;
+
+      final by = data['by'];
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => AlertDialog(
+          title: const Text("Sesi Konsultasi Berakhir"),
+          content: Text(
+            by == 'doctor'
+                ? "Sesi telah berakhir."
+                : "Pasien telah mengakhiri sesi.",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // close dialog
+                Navigator.pop(context, true); // keluar chat + return ke DetailAppointment
+              },
+              child: const Text("OK"),
+            )
+          ],
+        ),
+      );
+    });
+  }
 
   Future<void> _loadChatHistory() async {
     try {
-      // Implementasi untuk memuat riwayat chat dari database
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
 
@@ -70,60 +105,379 @@ class _RuangKonsultasiDokterState extends State<RuangKonsultasiDokter> {
         },
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+      if (response.statusCode != 200) return;
+
+      final data = jsonDecode(response.body);
+
+      final List<Message> newMessages = (data['messages'] ?? [])
+          .map<Message>((msg) => Message.fromJson(msg))
+          .toList();
+
+      if (!mounted) return;
+
+      // 🔥 KUNCI: jangan overwrite kalau kosong
+      if (newMessages.isNotEmpty) {
         setState(() {
-          _messages.clear();
-          _messages.addAll((data['messages'] as List).map((msg) => Message.fromJson(msg)).toList());
+          for (var msg in newMessages) {
+            final exists = _messages.any((m) => m.id == msg.id);
+            if (!exists) {
+              // _messages.insert(0, msg);
+              _messages.add(msg);
+            }
+          }
         });
       }
+
     } catch (e) {
       print('Error loading chat history: $e');
     }
   }
 
-  void _sendMessage() {
-    // if (_messageController.text.isEmpty) return;
-    //
-    // WebSocketService.sendMessage(_messageController.text);
-    //
-    // setState(() {
-    //   _messages.add(Message(
-    //     text: _messageController.text,
-    //     time: DateTime.now(),
-    //     isUser: false, // Dokter mengirim
-    //   ));
-    // });
-    //
-    // _messageController.clear();
+  Future<void> _sendMessage() async {
+    if (_messageController.text.isEmpty) return;
+
+    final messageData = {
+      '_id': DateTime.now().millisecondsSinceEpoch.toString(), // ✅ TAMBAH
+      'reservationId': widget.reservation['_id'],
+      'text': _messageController.text,
+      'senderType': 'doctor',
+      'timestamp': DateTime.now().toIso8601String(),
+      'type' : 'text',
+    };
+
+    // ✅ TAMBAH INI (BIAR LANGSUNG MUNCUL)
+    setState(() {
+      _messages.add(Message.fromJson(messageData));
+    });
+
+    // realtime
+    SocketService.sendMessage(messageData);
+
+    // simpan ke DB
+    try {
+      await ApiService.sendTextMessage(messageData);
+    } catch (e) {
+      print('Error: $e');
+    }
+
+    _messageController.clear();
   }
 
-  Future<void> _pickImage() async {
-    // try {
-    //   final XFile? pickedFile = await _picker.pickImage(
-    //     source: ImageSource.gallery,
-    //     imageQuality: 70,
-    //   );
-    //
-    //   if (pickedFile != null) {
-    //     // Convert image to base64 and send
-    //     final bytes = await pickedFile.readAsBytes();
-    //     final base64Image = base64Encode(bytes);
-    //
-    //     WebSocketService.sendMessage('', image: base64Image);
-    //
-    //     setState(() {
-    //       _messages.add(Message(
-    //         text: '',
-    //         image: base64Image,
-    //         time: DateTime.now(),
-    //         isUser: false,
-    //       ));
-    //     });
-    //   }
-    // } catch (e) {
-    //   print('Error picking image: $e');
-    // }
+  void _openImage(String imagePath) {
+    final fullUrl =
+        '${ApiService.baseUrl.replaceAll('/api', '')}$imagePath';
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FullScreenImage(imageUrl: fullUrl),
+      ),
+    );
+  }
+
+  Future<void> _endConsultation() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    final response = await http.put(
+      Uri.parse('${ApiService.baseUrl}/reservasi/${widget.reservation['_id']}'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'status': 'selesai'}),
+    );
+
+    if (response.statusCode == 200) {
+      // 🔥 kirim event ke socket sebelum keluar
+      SocketService.sendMessage({
+        'type': 'session_finished',
+        'reservationId': widget.reservation['_id'],
+        'by': 'doctor',
+      });
+      Navigator.pop(context, true);
+    }
+  }
+
+  void _showActionMenu() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          insetPadding: EdgeInsets.symmetric(horizontal: 40),
+          child: Container(
+            width: 1000,
+            padding: const EdgeInsets.all(40),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: SizedBox(
+                  height: 200,
+                  // 🔥 BUTTON RESEP
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      padding: EdgeInsets.all(20),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      side: BorderSide(
+                        color: Color(0xFF109E88),
+                        width: 2
+                      )
+                    ),
+                    onPressed: () async {
+                      Navigator.pop(context);
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => BuatResepPage(reservation: widget.reservation),
+                        ),
+                      );
+
+                      if (result != null) {
+                        final message = {
+                          '_id': DateTime.now().millisecondsSinceEpoch.toString(), // ✅ TAMBAH
+                          'reservationId': widget.reservation['_id'],
+                          'text': 'Resep Dokter',
+                          'senderType': 'doctor',
+                          'timestamp': DateTime.now().toIso8601String(),
+                          'type': 'resep',
+                          'resep': result['resep'], // HARUS LIST
+                        };
+
+                        // 2. realtime socket
+                        SocketService.sendMessage(message);
+
+                        // ✅ TAMBAH INI
+                        setState(() {
+                          // _messages.insert(0, Message.fromJson(message));
+                          _messages.add(Message.fromJson(message));
+                        });
+                      }
+                    },
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "BUAT RESEP",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'Afacad',
+                            color: Color(0xFF109E88),
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold
+                          ),
+                        ),
+                        SizedBox(height: 15),
+                        Text(
+                          "Resep digital, hanya bisa ditebus di apotek klinik",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'Afacad',
+                            color: Color(0xFF109E88),
+                            fontSize: 18
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                ),
+  
+                SizedBox(width: 50),
+  
+                  // 🔥 BUTTON CATATAN
+                Expanded(
+                  child: SizedBox(
+                  height: 200,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      padding: EdgeInsets.all(20),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      side: BorderSide(
+                          color: Color(0xFF109E88),
+                          width: 2
+                      )
+                    ),
+                    onPressed: () async {
+                      Navigator.pop(context);
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => BuatCatatanPage(reservation: widget.reservation),
+                        ),
+                      );
+
+                      if (result != null) {
+                        final message = {
+                          '_id': DateTime.now().millisecondsSinceEpoch.toString(), // ✅ TAMBAH
+                          'reservationId': widget.reservation['_id'],
+                          'text': 'Catatan Dokter',
+                          'senderType': 'doctor',
+                          'timestamp': result['time'],
+                          'type': result['type'],
+                          'diagnosis': result['diagnosis'],
+                          'note': result['note'],
+                        };
+
+                        SocketService.sendMessage(message);
+
+                        // ✅ TAMBAH INI
+                        setState(() {
+                          // _messages.insert(0, Message.fromJson(message));
+                          _messages.add(
+                              Message.fromJson(message));
+                        });
+                      }
+                    },
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "BUAT CATATAN DOKTER",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'Afacad',
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF109E88)
+                          ),
+                        ),
+                        SizedBox(height: 15),
+                        Text(
+                          "Catatan ini akan tersimpan di akun pengguna serta dokter yang bersangkutan",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'Afacad',
+                            fontSize: 18,
+                            color: Color(0xFF109E88)
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSystemCard(Message message) {
+    final isResep = message.type == 'resep';
+
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 12),
+      alignment: Alignment.center,
+      child: Container(
+        width: 350,
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Color(0xFF109E88), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 6,
+            )
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isResep ? "Resep Digital" : "Catatan Dokter",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF109E88),
+              ),
+            ),
+            SizedBox(height: 8),
+
+            Text(
+              DateFormat('dd MMMM yyyy, HH:mm').format(message.time),
+              style: TextStyle(color: Colors.grey),
+            ),
+
+            SizedBox(height: 12),
+
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                  onPressed: () async {
+                    if (isResep) {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => BuatResepPage(
+                            reservation: widget.reservation,
+                            isEdit: true,
+                            existingResep: message.rawData?['resep'] ?? message.rawData?['data']?['resep'],
+                            messageId: message.id,
+                          ),
+                        ),
+                      );
+
+                      if (result != null) {
+                        setState(() {
+                          final index = _messages.indexWhere((m) => m.id == message.id);
+                          if (index != -1) {
+                            _messages[index] = Message.fromJson({
+                              ...message.rawData!,
+                              '_id': message.id,
+                              'resep': result['resep'],
+                              'timestamp': DateTime.now().toIso8601String(),
+                            });
+                          }
+                        });
+                      }
+
+                    } else {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => BuatCatatanPage(
+                            reservation: widget.reservation,
+                            isEdit: true,
+                            existingCatatan: message.rawData,
+                          ),
+                        ),
+                      );
+
+                      if (result != null) {
+                        setState(() {
+                          final index = _messages.indexWhere((m) => m.id == message.id);
+
+                          if (index != -1) {
+                            _messages[index] = Message.fromJson({
+                              ...message.rawData!,
+                              '_id': message.id, // WAJIB
+                              'timestamp': DateTime.now().toIso8601String(),
+                              'diagnosis': result['diagnosis'],
+                              'note': result['note'],
+                            });
+                          }
+                        });
+                      }
+                    }
+                  },
+                child: Text("Selengkapnya"),
+              ),
+            )
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -135,56 +489,80 @@ class _RuangKonsultasiDokterState extends State<RuangKonsultasiDokter> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF109E88),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.reservation['namaPasien'] ?? 'Pasien',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(100.0),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(
+              bottom: BorderSide(
+                color: Color(0xFF109E88),
+                width: 1.0,
               ),
-            ),
-            Text(
-              'Konsultasi Berlangsung',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.white70,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            margin: EdgeInsets.only(right: 16),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  _isConnected ? Icons.circle : Icons.circle_outlined,
-                  color: _isConnected ? Colors.green : Colors.red,
-                  size: 12,
-                ),
-                SizedBox(width: 4),
-                Text(
-                  _isConnected ? 'TERHUBUNG' : 'MENGHUBUNGKAN',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
             ),
           ),
-        ],
+          child:
+          Padding(
+            padding: const EdgeInsets.only(top: 30.0, left: 50, right: 50),
+            child: AppBar(
+              automaticallyImplyLeading: false,
+              leading: Center(
+                child: Container(
+                  width: 55,
+                  height: 55,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Color(0xFF109E88),
+                      width: 1,
+                    ),
+                  ),
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(),
+                    iconSize: 24,
+                    icon: Icon(Icons.arrow_back, color: Color(0xFF109E88)),
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                ),
+              ),
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    'Ruang Konsultasi',
+                    style: TextStyle(
+                      fontFamily: 'Afacad',
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF109E88),
+                    ),
+                  ),
+                  Text(
+                    'Nama Pasien : ${widget.reservation['namaPasien'] ?? 'Pasien'}',
+                    style: TextStyle(
+                      fontFamily: 'Afacad',
+                      fontSize: 20,
+                      color: Color(0xFF109E88),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                IconButton(
+                  iconSize: 30,
+                  icon: Icon(Icons.check, color: Color(0xFF109E88)),
+                  onPressed: _endConsultation,
+                ),
+              ],
+              elevation: 0,
+              centerTitle: true,
+              backgroundColor: Colors.transparent,
+            ),
+          ),
+        ),
       ),
       body: Column(
         children: [
@@ -214,10 +592,10 @@ class _RuangKonsultasiDokterState extends State<RuangKonsultasiDokter> {
             ),
             child: Row(
               children: [
-                IconButton(
-                  icon: Icon(Icons.photo_library, color: Color(0xFF109E88)),
-                  onPressed: _pickImage,
-                ),
+                // IconButton(
+                //   icon: Icon(Icons.photo_library, color: Color(0xFF109E88)),
+                //   onPressed: _pickImage,
+                // ),
                 Expanded(
                   child: TextField(
                     controller: _messageController,
@@ -234,6 +612,10 @@ class _RuangKonsultasiDokterState extends State<RuangKonsultasiDokter> {
                   ),
                 ),
                 IconButton(
+                  icon: Icon(Icons.add, color: Color(0xFF109E88)),
+                  onPressed: _showActionMenu,
+                ),
+                IconButton(
                   icon: Icon(Icons.send, color: Color(0xFF109E88)),
                   onPressed: _sendMessage,
                 ),
@@ -246,16 +628,18 @@ class _RuangKonsultasiDokterState extends State<RuangKonsultasiDokter> {
   }
 
   Widget _buildMessageBubble(Message message) {
-    final isUser = message.isUser;
+    final isMe = !message.isUser;
     final time = DateFormat('HH:mm').format(message.time);
-
+    if (message.type == 'resep' || message.type == 'catatan') {
+      return _buildSystemCard(message);
+    }
     return Container(
       margin: EdgeInsets.symmetric(vertical: 8),
       child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          if (!isUser)
+          if (!isMe)
             CircleAvatar(
               backgroundColor: Colors.grey[300],
               child: Icon(Icons.person, color: Colors.white, size: 18),
@@ -264,30 +648,38 @@ class _RuangKonsultasiDokterState extends State<RuangKonsultasiDokter> {
           SizedBox(width: 8),
           Flexible(
             child: Column(
-              crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
                 Container(
                   padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isUser ? Colors.grey[200] : Color(0xFF109E88),
+                    // color: isMe ? Color(0xFF109E88) : Colors.grey[300],
+                    color: Colors.grey[300],
                     borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(16),
                       topRight: Radius.circular(16),
-                      bottomLeft: isUser ? Radius.circular(16) : Radius.circular(4),
-                      bottomRight: isUser ? Radius.circular(4) : Radius.circular(16),
+                      bottomLeft: isMe ? Radius.circular(16) : Radius.circular(4),
+                      bottomRight: isMe ? Radius.circular(4) : Radius.circular(16),
                     ),
                   ),
                   child: message.image != null
-                      ? Image.memory(
-                    base64Decode(message.image!),
-                    width: 200,
-                    height: 200,
-                    fit: BoxFit.cover,
-                  )
+                      ? GestureDetector(
+                          onTap: () {
+                            _openImage(message.image!);
+                          },
+                          child: Image.network(
+                            '${ApiService.baseUrl.replaceAll('/api', '')}${message.image}',
+                            width: 200,
+                            height: 200,
+                            fit: BoxFit.cover,
+                          ),
+                      )
                       : Text(
                     message.text,
                     style: TextStyle(
-                      color: isUser ? Colors.black : Colors.white,
+                      // color: isMe ? Colors.white : Colors.black,
+                      color: Colors.black,
+                      fontSize: 18
                     ),
                   ),
                 ),
@@ -295,16 +687,16 @@ class _RuangKonsultasiDokterState extends State<RuangKonsultasiDokter> {
                 Text(
                   time,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 14,
                     color: Colors.grey,
                   ),
                 ),
               ],
             ),
           ),
-          if (isUser)
+          if (isMe)
             SizedBox(width: 8),
-          if (isUser)
+          if (isMe)
             CircleAvatar(
               backgroundColor: Color(0xFF109E88),
               child: Text(
@@ -324,20 +716,51 @@ class Message {
   final String? image;
   final DateTime time;
   final bool isUser;
+  final String type;
+  final Map<String, dynamic>? rawData;
+  final String? id;
 
   Message({
     required this.text,
     this.image,
     required this.time,
     required this.isUser,
+    this.type = 'text',
+    this.rawData,
+    this.id
   });
 
   factory Message.fromJson(Map<String, dynamic> json) {
     return Message(
+      id: json['_id'] ?? json['id'],
       text: json['text'] ?? '',
-      image: json['image'],
-      time: DateTime.parse(json['time']),
-      isUser: json['isUser'] ?? false,
+      image: json['imageUrl'] ?? json['image'],
+      time: DateTime.parse(json['timestamp'] ?? DateTime.now().toIso8601String()),
+      isUser: json['senderType'] == 'user',
+      type: (json['type'] ?? 'text').toString().toLowerCase().trim(),
+      rawData: json,
+    );
+  }
+}
+
+class FullScreenImage extends StatelessWidget {
+  final String imageUrl;
+
+  const FullScreenImage({Key? key, required this.imageUrl}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: IconThemeData(color: Colors.white),
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          child: Image.network(imageUrl),
+        ),
+      ),
     );
   }
 }
