@@ -18,7 +18,6 @@ class MenuDashboardDok extends StatefulWidget {
 
 class _MenuDashboardDokState extends State<MenuDashboardDok> {
   List notifications = [];
-  final SocketService socketService = SocketService();
   String doctorId = "";
   String doctorName = "";
   bool isLoading = true;
@@ -35,25 +34,29 @@ class _MenuDashboardDokState extends State<MenuDashboardDok> {
     doctorId = prefs.getString('doctorId') ?? "";
     doctorName = prefs.getString('doctorName') ?? "";
 
-    await _loadAll();
-
-    socketService.connectDoctor(
+    SocketService.connectDoctor(
       doctorName,
           (data) {
         final notifData = data['data'];
+        if (notifData == null) return;
 
         setState(() {
-          if (!notifications.any((n) => n['_id'] == notifData['_id'])) {
+          final id = notifData['_id'] ?? notifData['createdAt'];
+
+          if (!notifications.any((n) =>
+          (n['_id'] ?? n['createdAt']) == id)) {
             notifications.insert(0, notifData);
           }
         });
       },
     );
+
+    await _loadAll();
   }
 
   @override
   void dispose() {
-    socketService.disconnect();
+    SocketService.socket?.off("new_notification_dokter");
     super.dispose();
   }
 
@@ -67,7 +70,10 @@ class _MenuDashboardDokState extends State<MenuDashboardDok> {
       // final appointments = await ApiService.getTodayAppointments();
 
       setState(() {
-        notifications = List.from(notifdok);
+        notifications = [
+          ...notifdok,
+          ...notifications,
+        ];
         doctorName = prefs.getString('doctorName') ?? "Dokter";
         doctorId = prefs.getString('doctorId') ?? "";
         // todayAppointments = appointments;

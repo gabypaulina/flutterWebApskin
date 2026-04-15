@@ -52,7 +52,7 @@ class _MenuDashboardTerapisState extends State<MenuDashboardTerapis> {
 
   @override
   void dispose() {
-    socketService.disconnect();
+    SocketService.disconnect();
     super.dispose();
   }
 

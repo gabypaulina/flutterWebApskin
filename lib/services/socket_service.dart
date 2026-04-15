@@ -9,6 +9,16 @@ class SocketService {
   static bool get isConnected => _isConnected;
 
   static Future<void> initializeSocket() async {
+    if (_socket != null && _socket!.connected) {
+      print("Socket already connected");
+      return;
+    }
+
+    if (_socket != null && !_socket!.connected) {
+      print("Reconnecting existing socket");
+      _socket!.connect();
+      return;
+    }
     try {
       _socket = IO.io(
         '${ApiService.basedUrl}', // Ganti dengan URL server Anda
@@ -65,27 +75,66 @@ class SocketService {
   }
 
   // UNTUK ADMIN
-  void connect(Function(dynamic) onNewNotification) {
-    initializeSocket();
+  static Future<void> connectAdmin(Function(dynamic) onNewNotification) async {
+    await initializeSocket();
 
-    socket!.on("new_notification", (data) {
+    _socket!.off("connect");
+    _socket!.off("new_notification");
+
+
+    _socket!.on("connect", (_) {
+      print("Socket connected");
+
+      _socket!.emit("join_admin_room");
+    });
+
+    // 🔥 PASTIKAN LISTENER SELALU AKTIF
+    _socket!.on("new_notification", (data) {
+      print("NOTIF MASUK SOCKET: $data");
       onNewNotification(data);
     });
+
+    // kalau sudah connect langsung join juga
+    if (_socket!.connected) {
+      _socket!.emit("join_admin_room");
+    }
   }
 
   // UNTUK DOKTER
-  void connectDoctor(
-      String doctorName, Function(dynamic) onNewNotification) {
+  static Future<void> connectDoctor(
+      String doctorName,
+      Function(dynamic) onNewNotification,
+      ) async {
+    await initializeSocket();
 
-    initializeSocket();
-    // 🔥 JOIN ROOM DOKTER
-    socket!.emit("join_doctor_room", doctorName.trim().toLowerCase());
+    final room = doctorName.trim().toLowerCase();
 
-    socket!.on("new_notification_dokter", (data) {
-      print("SOCKET MASUK: $data");
-      print("Doctor notif received: $data");
+    _socket!.off("new_notification_dokter");
+
+    // 👇 TARUH DI SINI
+    _socket!.onAny((event, data) {
+      print("EVENT MASUK: $event -> $data");
+    });
+
+    _socket!.onConnect((_) {
+      print("Doctor socket connected");
+
+      _socket!.emit("join_doctor_room", room);
+      print("JOIN DOCTOR ROOM: $room");
+    });
+
+    _socket!.on("new_notification_dokter", (data) {
+      print("DOCTOR NOTIF: $data");
+
+      if (data == null) return;
       onNewNotification(data);
     });
+
+    // kalau sudah connect
+    if (_socket!.connected) {
+      _socket!.emit("join_doctor_room", room);
+      print("JOIN DOCTOR ROOM (already connected): $room");
+    }
   }
 
   // UNTUK TERAPIS
@@ -103,7 +152,7 @@ class SocketService {
     });
   }
 
-  void disconnect() {
+  static void disconnect() {
     if (_socket != null) {
       _socket!.disconnect();
       _socket = null;

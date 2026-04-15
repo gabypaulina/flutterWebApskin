@@ -25,14 +25,13 @@ class _MenuDashboardState extends State<MenuDashboard> {
   @override
   void initState() {
     super.initState();
-    _loadAll();
 
-    socketService.connect((data) {
+    // 1. FIRST: CONNECT SOCKET + JOIN ROOM + LISTENER
+    SocketService.connectAdmin((data) {
       final notifData = data['data'];
       final createdAt = DateTime.parse(notifData['createdAt']);
       final now = DateTime.now();
 
-      // Filter: hanya notif yang dibuat hari ini
       if (createdAt.year == now.year &&
           createdAt.month == now.month &&
           createdAt.day == now.day) {
@@ -41,11 +40,14 @@ class _MenuDashboardState extends State<MenuDashboard> {
         });
       }
     });
+
+    // 2. SECOND: LOAD DATA API
+    _loadAll();
   }
 
   @override
   void dispose() {
-    socketService.disconnect();
+    SocketService.disconnect();
     super.dispose();
   }
 
