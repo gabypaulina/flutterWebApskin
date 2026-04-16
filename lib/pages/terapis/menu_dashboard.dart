@@ -36,7 +36,7 @@ class _MenuDashboardTerapisState extends State<MenuDashboardTerapis> {
 
     await _loadAll();
 
-    socketService.connectTerapis(
+    SocketService.connectTerapis(
       terapisName,
           (data) {
         final notifData = data['data'];
@@ -138,6 +138,36 @@ class _DashboardTerapisContentState extends State<DashboardTerapisContent> {
   void initState() {
     super.initState();
     _loadDashboardData();
+
+    SocketService.socket?.on("new_notification", (data) {
+      final notif = data['data'];
+
+      // OPTIONAL: kalau mau langsung refresh dari server
+      _loadDashboardData();
+
+      // ATAU optimis update tanpa fetch ulang:
+      if (notif != null) {
+        _handleNewReservation(notif);
+      }
+    });
+  }
+
+  void _handleNewReservation(dynamic notif) {
+    if (!mounted) return;
+
+    final today = DateTime.now();
+    final todayStr =
+        "${today.day.toString().padLeft(2, '0')}/"
+        "${today.month.toString().padLeft(2, '0')}/"
+        "${today.year}";
+
+    final newReservation = notif;
+
+    if (newReservation['tanggalReservasi'] == todayStr) {
+      setState(() {
+        todayAppointments.insert(0, newReservation);
+      });
+    }
   }
 
   Future<void> _loadDashboardData() async {
@@ -377,7 +407,7 @@ class _DashboardTerapisContentState extends State<DashboardTerapisContent> {
           borderRadius: BorderRadius.circular(10),
           side: BorderSide(
             color: Colors.grey.withOpacity(0.25),
-            width: 1,
+            width: 3,
           ),
         ),
         child: Padding(
@@ -432,7 +462,7 @@ class _DashboardTerapisContentState extends State<DashboardTerapisContent> {
           borderRadius: BorderRadius.circular(8),
           side: BorderSide(
             color: Colors.grey.withOpacity(0.25),
-            width: 1,
+            width: 3,
           ),
         ),
         child: Padding(

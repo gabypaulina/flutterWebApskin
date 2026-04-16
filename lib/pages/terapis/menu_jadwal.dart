@@ -211,12 +211,12 @@ class _JadwalTerapisContentState extends State<JadwalTerapisContent> {
               width: 1,
             ),
           ),
-          child: IconButton(
-            icon: const Icon(Icons.notifications, color: Color(0xFF109E88)),
-            onPressed: () {
-              // Handle notification button press
-            },
-          ),
+          // child: IconButton(
+          //   icon: const Icon(Icons.notifications, color: Color(0xFF109E88)),
+          //   onPressed: () {
+          //     // Handle notification button press
+          //   },
+          // ),
         ),
       ],
     );
@@ -238,7 +238,7 @@ class _JadwalTerapisContentState extends State<JadwalTerapisContent> {
           borderRadius: BorderRadius.circular(8),
           side: BorderSide(
             color: Colors.grey.withOpacity(0.25),
-            width: 1,
+            width: 3,
           ),
         ),
         child: Padding(

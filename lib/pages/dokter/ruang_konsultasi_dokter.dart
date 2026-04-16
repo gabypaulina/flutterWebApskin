@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import '../../services/socket_service.dart';
 import 'buat_catatan_dokter.dart';
 import 'buat_resep_digital.dart';
+import 'package:uuid/uuid.dart';
 
 
 class RuangKonsultasiDokter extends StatefulWidget {
@@ -25,6 +26,8 @@ class _RuangKonsultasiDokterState extends State<RuangKonsultasiDokter> {
   final List<Message> _messages = [];
   final ImagePicker _picker = ImagePicker();
   bool _isConnected = false;
+  final Uuid uuid = Uuid();
+  bool _socketInitialized = false;
 
   @override
   void initState() {
@@ -32,26 +35,49 @@ class _RuangKonsultasiDokterState extends State<RuangKonsultasiDokter> {
     _initializeSocket();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadChatHistory();
-    });  }
+    });
+    if (_socketInitialized) return;
+    _socketInitialized = true;
+  }
 
   Future<void> _initializeSocket() async {
     await SocketService.initializeSocket();
+
+    SocketService.off('receive_message');
+    SocketService.off('receive_image');
+
+    final roomId = widget.reservation['_id'];
+
+    // 🔥 WAJIB: kalau socket sudah connect
+    if (SocketService.socket!.connected) {
+      SocketService.joinRoom(roomId);
+      print("JOIN ROOM (immediate): $roomId");
+    }
 
     SocketService.socket?.onConnect((_) {
       print("JOIN ROOM DOKTER: ${widget.reservation['_id']}");
       SocketService.joinRoom(widget.reservation['_id']);
     });
 
+    SocketService.socket?.on("joined_room", (room) {
+      print("BERHASIL JOIN ROOM: $room");
+    });
+
     SocketService.on('receive_message', (data) {
       if (!mounted) return;
 
-      final newMessage = Message.fromJson(data);
+      final newMsg = Message.fromJson(data);
+
+      final newId = newMsg.messageId ?? newMsg.id;
+
+      final exists = _messages.any(
+            (m) => (m.messageId ?? m.id) == newId,
+      );
+
+      if (exists) return;
 
       setState(() {
-        final exists = _messages.any((m) => m.id == newMessage.id);
-        if (!exists) {
-          _messages.add(newMessage);
-        }
+        _messages.add(newMsg);
       });
     });
 
@@ -65,8 +91,7 @@ class _RuangKonsultasiDokterState extends State<RuangKonsultasiDokter> {
     });
 
     SocketService.socket?.on("session_finished", (data) {
-      if (!mounted) return;
-
+      if (data['reservationId'] != widget.reservation['_id']) return;
       final by = data['by'];
 
       showDialog(
@@ -137,7 +162,7 @@ class _RuangKonsultasiDokterState extends State<RuangKonsultasiDokter> {
     if (_messageController.text.isEmpty) return;
 
     final messageData = {
-      '_id': DateTime.now().millisecondsSinceEpoch.toString(), // ✅ TAMBAH
+      'messageId': uuid.v4(),
       'reservationId': widget.reservation['_id'],
       'text': _messageController.text,
       'senderType': 'doctor',
@@ -145,20 +170,13 @@ class _RuangKonsultasiDokterState extends State<RuangKonsultasiDokter> {
       'type' : 'text',
     };
 
-    // ✅ TAMBAH INI (BIAR LANGSUNG MUNCUL)
-    setState(() {
-      _messages.add(Message.fromJson(messageData));
-    });
+    // // ✅ TAMBAH INI (BIAR LANGSUNG MUNCUL)
+    // setState(() {
+    //   _messages.add(Message.fromJson(messageData));
+    // });
 
     // realtime
     SocketService.sendMessage(messageData);
-
-    // simpan ke DB
-    try {
-      await ApiService.sendTextMessage(messageData);
-    } catch (e) {
-      print('Error: $e');
-    }
 
     _messageController.clear();
   }
@@ -238,23 +256,19 @@ class _RuangKonsultasiDokterState extends State<RuangKonsultasiDokter> {
 
                       if (result != null) {
                         final message = {
-                          '_id': DateTime.now().millisecondsSinceEpoch.toString(), // ✅ TAMBAH
+                          'messageId': uuid.v4(),
                           'reservationId': widget.reservation['_id'],
                           'text': 'Resep Dokter',
                           'senderType': 'doctor',
+                          'resepId': 'resep_${DateTime.now().millisecondsSinceEpoch}', // 🔥 penting
                           'timestamp': DateTime.now().toIso8601String(),
                           'type': 'resep',
                           'resep': result['resep'], // HARUS LIST
                         };
 
-                        // 2. realtime socket
+                        // // 2. realtime socket
                         SocketService.sendMessage(message);
 
-                        // ✅ TAMBAH INI
-                        setState(() {
-                          // _messages.insert(0, Message.fromJson(message));
-                          _messages.add(Message.fromJson(message));
-                        });
                       }
                     },
                     child: Column(
@@ -315,7 +329,7 @@ class _RuangKonsultasiDokterState extends State<RuangKonsultasiDokter> {
 
                       if (result != null) {
                         final message = {
-                          '_id': DateTime.now().millisecondsSinceEpoch.toString(), // ✅ TAMBAH
+                          'messageId': uuid.v4(),
                           'reservationId': widget.reservation['_id'],
                           'text': 'Catatan Dokter',
                           'senderType': 'doctor',
@@ -326,13 +340,14 @@ class _RuangKonsultasiDokterState extends State<RuangKonsultasiDokter> {
                         };
 
                         SocketService.sendMessage(message);
-
-                        // ✅ TAMBAH INI
-                        setState(() {
-                          // _messages.insert(0, Message.fromJson(message));
-                          _messages.add(
-                              Message.fromJson(message));
-                        });
+                        //
+                        // // ✅ TAMBAH INI
+                        // setState(() {
+                        //   // _messages.insert(0, Message.fromJson(message));
+                        //   _messages.add(
+                        //       Message.fromJson(message));
+                        // });
+                        // await ApiService.sendCatatan(message);
                       }
                     },
                     child: Column(
@@ -719,6 +734,7 @@ class Message {
   final String type;
   final Map<String, dynamic>? rawData;
   final String? id;
+  final String? messageId;
 
   Message({
     required this.text,
@@ -727,11 +743,13 @@ class Message {
     required this.isUser,
     this.type = 'text',
     this.rawData,
-    this.id
+    this.id,
+    this.messageId,
   });
 
   factory Message.fromJson(Map<String, dynamic> json) {
     return Message(
+      messageId: json['messageId'],
       id: json['_id'] ?? json['id'],
       text: json['text'] ?? '',
       image: json['imageUrl'] ?? json['image'],

@@ -356,37 +356,37 @@ class _IklanContentState extends State<IklanContent> {
           ),
         ),
         SizedBox(width: 16),
-        Expanded(
-          child: ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _selectedSection = 1;
-              });
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _selectedSection == 1 ? Color(0xFF109E88) : Colors.white,
-              padding: EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-                side: BorderSide(
-                  color: _selectedSection == 1 ? Colors.transparent : Color(0xFF109E88),
-                  width: 1,
-                ),
-              ),
-              elevation: 0,
-            ),
-            child: Text(
-              'IKLAN NOTIFIKASI',
-              style: TextStyle(
-                color: _selectedSection == 1 ? Colors.white : Color(0xFF109E88),
-                fontFamily: 'Afacad',
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-          ),
-        ),
-        SizedBox(width: 16),
+        // Expanded(
+        //   child: ElevatedButton(
+        //     onPressed: () {
+        //       setState(() {
+        //         _selectedSection = 1;
+        //       });
+        //     },
+        //     style: ElevatedButton.styleFrom(
+        //       backgroundColor: _selectedSection == 1 ? Color(0xFF109E88) : Colors.white,
+        //       padding: EdgeInsets.symmetric(vertical: 16),
+        //       shape: RoundedRectangleBorder(
+        //         borderRadius: BorderRadius.circular(8),
+        //         side: BorderSide(
+        //           color: _selectedSection == 1 ? Colors.transparent : Color(0xFF109E88),
+        //           width: 1,
+        //         ),
+        //       ),
+        //       elevation: 0,
+        //     ),
+        //     child: Text(
+        //       'IKLAN NOTIFIKASI',
+        //       style: TextStyle(
+        //         color: _selectedSection == 1 ? Colors.white : Color(0xFF109E88),
+        //         fontFamily: 'Afacad',
+        //         fontWeight: FontWeight.bold,
+        //         fontSize: 16,
+        //       ),
+        //     ),
+        //   ),
+        // ),
+        // SizedBox(width: 16),
         Expanded(
           child: ElevatedButton(
             onPressed: () {

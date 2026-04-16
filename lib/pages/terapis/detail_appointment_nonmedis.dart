@@ -348,6 +348,9 @@ class _DetailAppointmentTerapisState extends State<DetailAppointmentTerapis> {
 
         TextField(
           controller: treatmentControllers,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(),
+          ),
           textAlign: TextAlign.center,
           maxLines: 6,
           style: TextStyle(
@@ -357,15 +360,30 @@ class _DetailAppointmentTerapisState extends State<DetailAppointmentTerapis> {
             color: const Color(0xFF109E88),
           ),
         ),
-
+        const SizedBox(height: 10),
         // 🔥 BUTTON SELESAI
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF109E88),
+              padding: EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
             onPressed: _finishConsultation,
-            child: Text("Selesaikan Sesi"),
+            child: Text(
+              'Selesaikan Sesi',
+              style: TextStyle(
+                color: Colors.white,
+                fontFamily: 'Afacad',
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
-        ),
+        )
       ],
     );
   }

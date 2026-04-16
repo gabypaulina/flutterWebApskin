@@ -11,11 +11,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../pages/admin/menu_iklan.dart'; // Untuk SocketException
 
 class ApiService {
-  static const String baseUrl = 'https://backendapskin-production.up.railway.app/api';
-  static const String basedUrl = 'https://backendapskin-production.up.railway.app';
+  // static const String baseUrl = 'https://backendapskin-production.up.railway.app/api';
+  // static const String basedUrl = 'https://backendapskin-production.up.railway.app';
 
-  // static const String baseUrl = 'http://192.168.0.4:3000/api';
-  // static const String basedUrl = 'http://192.168.0.4:3000';
+  static const String baseUrl = 'http://192.168.0.4:3000/api';
+  static const String basedUrl = 'http://192.168.0.4:3000';
 
   // Helper method for making POST requests
   static Future<Map<String, dynamic>> postRequest(

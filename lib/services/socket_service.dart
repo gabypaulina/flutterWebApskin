@@ -138,18 +138,30 @@ class SocketService {
   }
 
   // UNTUK TERAPIS
-  void connectTerapis(
-      String terapisName, Function(dynamic) onNewNotification) {
+  static Future<void> connectTerapis(
+      String terapisName,
+      Function(dynamic) onNewNotification,
+      ) async {
+    await initializeSocket();
 
-    initializeSocket();
-    // 🔥 JOIN ROOM TERAPIS
-    socket!.emit("join_terapis_room", terapisName);
+    _socket!.off("new_notification_terapis");
 
-    socket!.on("new_notification_terapis", (data) {
-      print("SOCKET MASUK: $data");
-      print("Doctor notif received: $data");
+    _socket!.onConnect((_) {
+      print("Terapis socket connected");
+
+      _socket!.emit("join_terapis_room");
+      print("JOIN TERAPIS ROOM");
+    });
+
+    _socket!.on("new_notification_terapis", (data) {
+      print("TERAPIS NOTIF: $data");
       onNewNotification(data);
     });
+
+    // kalau sudah connect
+    if (_socket!.connected) {
+      _socket!.emit("join_terapis_room");
+    }
   }
 
   static void disconnect() {
